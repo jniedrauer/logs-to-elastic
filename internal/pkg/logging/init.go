@@ -15,13 +15,17 @@ func Init() {
 }
 
 func getLevel() (log.Level, error) {
-	logLevel := log.InfoLevel
-	lvl, set := os.LookupEnv("LOG_LEVEL")
+	defaultLevel := log.InfoLevel
 
+	lvl, set := os.LookupEnv("LOG_LEVEL")
 	if !set {
-		return logLevel, nil
+		return defaultLevel, nil
 	}
 
 	logLevel, err := log.ParseLevel(lvl)
-	return logLevel, err
+	if err != nil {
+		return defaultLevel, err
+	}
+
+	return logLevel, nil
 }
