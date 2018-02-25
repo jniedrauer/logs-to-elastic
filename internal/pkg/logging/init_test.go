@@ -14,11 +14,11 @@ func TestGetLevelDefault(t *testing.T) {
 	result, err := getLevel()
 
 	if result != defaultLogLevel {
-		t.Errorf("Expected %v, got %v", defaultLogLevel, result)
+		t.Errorf("expected %v, got %v", defaultLogLevel, result)
 	}
 
 	if err != nil {
-		t.Errorf("Got error: %v", err)
+		t.Errorf("got error: %v", err)
 	}
 }
 
@@ -29,11 +29,11 @@ func TestGetLevelDebug(t *testing.T) {
 	result, err := getLevel()
 
 	if result != log.DebugLevel {
-		t.Errorf("Expected %v, got %v", log.DebugLevel, result)
+		t.Errorf("expected %v, got %v", log.DebugLevel, result)
 	}
 
 	if err != nil {
-		t.Errorf("Got error: %v", err)
+		t.Errorf("got error: %v", err)
 	}
 }
 
@@ -44,10 +44,10 @@ func TestGetLevelInvalid(t *testing.T) {
 	result, err := getLevel()
 
 	if result != defaultLogLevel {
-		t.Errorf("Expected %v, got %v", defaultLogLevel, result)
+		t.Errorf("expected %v, got %v", defaultLogLevel, result)
 	}
 
 	if err == nil {
-		t.Errorf("Error not raised")
+		t.Errorf("error not raised")
 	}
 }

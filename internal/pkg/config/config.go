@@ -37,17 +37,17 @@ func (c *Configuration) LoadConfig() {
 		Name: &ssmParam},
 	)
 	if err != nil {
-		log.Fatalf("Got SSM error: %v", err)
+		log.Fatalf("got SSM error: %v", err)
 	}
 
 	readConfig(c, response.Parameter.Value)
 
-	log.Info("Initialized config %v", *c)
+	log.Info("initialized config %v", *c)
 }
 
 func readConfig(c *Configuration, data *string) {
 	err := yaml.Unmarshal([]byte(*data), c)
 	if err != nil {
-		log.Fatalf("Cannot unmarshal data: %v", err)
+		log.Fatalf("cannot unmarshal data: %v", err)
 	}
 }
