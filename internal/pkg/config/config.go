@@ -40,13 +40,13 @@ func (c *Configuration) LoadConfig() {
 		log.Fatalf("Got SSM error: %v", err)
 	}
 
-	readConfig(c, *response.Parameter.Value)
+	readConfig(c, response.Parameter.Value)
 
 	log.Info("Initialized config %v", *c)
 }
 
-func readConfig(c *Configuration, data string) {
-	err := yaml.Unmarshal([]byte(data), c)
+func readConfig(c *Configuration, data *string) {
+	err := yaml.Unmarshal([]byte(*data), c)
 	if err != nil {
 		log.Fatalf("Cannot unmarshal data: %v", err)
 	}
