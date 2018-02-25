@@ -5,12 +5,14 @@ import (
 	"errors"
 
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/config"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/lambdahndlr"
 )
 
 type Handler interface {
+	New()
 	LoadConfig(cfg *config.Config) error
-	GetDataChunks() []*[]byte
-	Decode()
+	GetChunks() []*[]byte
+	decode(*lambdahndlr.Event)
 }
 
 type BaseHandle struct {
