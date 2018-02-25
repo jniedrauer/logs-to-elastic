@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/config"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/logging"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -25,6 +26,10 @@ type Response struct {
 
 func Handler(request Request) (Response, error) {
 	log.Debug("Got event: %s", request.Value)
+
+	cfg := config.Configuration{}
+	cfg.LoadConfig()
+
 	return Response{
 		Message: fmt.Sprintf("Processed request ID %f", request.ID),
 		Ok:      true,

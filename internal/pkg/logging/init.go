@@ -6,6 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var defaultLogLevel log.Level = log.DebugLevel
+
 func Init() {
 	logLevel, err := getLevel()
 	log.SetLevel(logLevel)
@@ -15,16 +17,14 @@ func Init() {
 }
 
 func getLevel() (log.Level, error) {
-	defaultLevel := log.InfoLevel
-
 	lvl, set := os.LookupEnv("LOG_LEVEL")
 	if !set {
-		return defaultLevel, nil
+		return defaultLogLevel, nil
 	}
 
 	logLevel, err := log.ParseLevel(lvl)
 	if err != nil {
-		return defaultLevel, err
+		return defaultLogLevel, err
 	}
 
 	return logLevel, nil

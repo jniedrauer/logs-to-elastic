@@ -17,18 +17,16 @@ var sess *session.Session
 var sessErr error
 var once sync.Once
 
-type Aws struct{}
-
-func GetSession(a Aws) (*session.Session, error) {
+func GetSession() (*session.Session, error) {
 	once.Do(func() {
 		region := getRegion()
-		sess, sessErr = getNewSession(a, region)
+		sess, sessErr = getNewSession(region)
 	})
 
 	return sess, sessErr
 }
 
-func getNewSession(a Aws, region string) (*session.Session, error) {
+func getNewSession(region string) (*session.Session, error) {
 	return session.NewSession(&aws.Config{
 		Region: aws.String(region)},
 	)

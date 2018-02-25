@@ -6,32 +6,58 @@ TODO: Documentation
 package config
 
 import (
-	"fmt"
-	"strings"
+	"os"
 
-	"github.com/op/go-logging"
-	//"gopkg.in/yaml.v2"
-	//"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/aws"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
-var log = logging.MustGetLogger("config")
+var defaultSsmParam string = "/LogsToElastic/config.yml"
 
 type Configurationer interface {
 	LoadConfig()
 }
 
 type Configuration struct {
-	ssmConfigParam   string
-	LogstashEndpoint string `yaml:"logstash"`
-	LogLevel         string `yaml:"log_level"`
-	LogGroups        string `yaml:"log_groups"`
-}
-
-func (f Configuration) LoadConfig() {
-	fmt.Println(strings.ToUpper("gopher"))
+	LogstashEndpoint string     `yaml:"logstash"`
+	LogLevel         string     `yaml:"log_level"`
+	LogGroups        []LogGroup `yaml:"log_groups"`
 }
 
 type LogGroup struct {
-	LogGroup  string `yaml:"logGroup"`
+	Name      string `yaml:"logGroup"`
 	IndexName string `yaml:"indexname"`
+}
+
+func (c *Configuration) LoadConfig() {
+	log.Info("Hello")
+	ssmParam, set := os.LookupEnv("SSM_CONFIG_PARAM")
+	if !set {
+		ssmParam = defaultSsmParam
+	}
+
+	sess := session.Must(aws.GetSession())
+	svc := ssm.New(sess)
+
+	response, err := svc.GetParameter(&ssm.GetParameterInput{
+		Name: &ssmParam},
+	)
+
+	if err != nil {
+		log.Fatalf("Got SSM error: %v", err)
+	}
+
+	readConfig(c, *response.Parameter.Value)
+
+	log.Info("Initialized config %v", *c)
+}
+
+func readConfig(c *Configuration, data string) {
+	err := yaml.Unmarshal([]byte(data), c)
+	if err != nil {
+		log.Fatalf("Cannot unmarshal data: %v", err)
+	}
 }

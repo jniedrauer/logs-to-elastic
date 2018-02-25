@@ -7,16 +7,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var defaultLevel log.Level = log.InfoLevel
-
 func TestGetLevelDefault(t *testing.T) {
 	// Verify that getLevel returns a default if environment level is unset
 	os.Unsetenv("LOG_LEVEL")
 
 	result, err := getLevel()
 
-	if result != defaultLevel {
-		t.Errorf("Expected %v, got %v", defaultLevel, result)
+	if result != defaultLogLevel {
+		t.Errorf("Expected %v, got %v", defaultLogLevel, result)
 	}
 
 	if err != nil {
@@ -45,8 +43,8 @@ func TestGetLevelInvalid(t *testing.T) {
 
 	result, err := getLevel()
 
-	if result != defaultLevel {
-		t.Errorf("Expected %v, got %v", defaultLevel, result)
+	if result != defaultLogLevel {
+		t.Errorf("Expected %v, got %v", defaultLogLevel, result)
 	}
 
 	if err == nil {
