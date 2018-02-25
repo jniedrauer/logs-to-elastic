@@ -16,7 +16,7 @@ import (
 
 var defaultSsmParam string = "/LogsToElastic/config.yml"
 
-type Configuration struct {
+type Config struct {
 	LogstashEndpoint string     `yaml:"logstash"`
 	LogLevel         string     `yaml:"log_level"`
 	LogGroups        []LogGroup `yaml:"log_groups"`
@@ -27,7 +27,7 @@ type LogGroup struct {
 	IndexName string `yaml:"indexname"`
 }
 
-func (c *Configuration) LoadConfig() {
+func (c *Config) loadConfig() {
 	ssmParam := env.GetEnvOrDefault("SSM_CONFIG_PARAM", defaultSsmParam)
 
 	sess := session.Must(aws.GetSession())
@@ -40,14 +40,20 @@ func (c *Configuration) LoadConfig() {
 		log.Fatalf("got SSM error: %v", err)
 	}
 
-	readConfig(c, response.Parameter.Value)
+	c.parseConfig(response.Parameter.Value)
 
 	log.Info("initialized config %v", *c)
 }
 
-func readConfig(c *Configuration, data *string) {
+func (c *Config) parseConfig(data *string) {
 	err := yaml.Unmarshal([]byte(*data), c)
 	if err != nil {
 		log.Fatalf("cannot unmarshal data: %v", err)
 	}
+}
+
+func NewConfig() *Config {
+	cfg := &Config{}
+	cfg.loadConfig()
+	return cfg
 }

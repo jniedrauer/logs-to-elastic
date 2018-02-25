@@ -27,8 +27,9 @@ type Response struct {
 func Handler(request Request) (Response, error) {
 	log.Debug("Got event: %s", request.Value)
 
-	cfg := config.Configuration{}
-	cfg.LoadConfig()
+	cfg := config.NewConfig()
+
+	log.Debug("Got config: %v", cfg)
 
 	return Response{
 		Message: fmt.Sprintf("Processed request ID %f", request.ID),
