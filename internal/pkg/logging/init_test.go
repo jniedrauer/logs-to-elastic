@@ -17,6 +17,7 @@ func TestGetLevel(t *testing.T) {
 	}{
 		{
 			expect: defaultLogLevel,
+			err:    nil,
 		},
 		{
 			env:    "DEBUG",
