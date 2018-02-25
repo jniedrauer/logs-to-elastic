@@ -6,8 +6,6 @@ package aws
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
-
 	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -16,22 +14,24 @@ import (
 
 var defaultRegion string = "us-east-1"
 var sess *session.Session
-var err error
+var sessErr error
 var once sync.Once
 
-func GetSession() (*session.Session, error) {
+type Aws struct{}
+
+func GetSession(a Aws) (*session.Session, error) {
 	once.Do(func() {
 		region := getRegion()
-
-		sess, err = session.NewSession(&aws.Config{
-			Region: aws.String(region)},
-		)
-		if err != nil {
-			log.Fatal("Error getting session: %v", err)
-			os.Exit(1)
-		}
+		sess, sessErr = getNewSession(a, region)
 	})
-	return sess, nil
+
+	return sess, sessErr
+}
+
+func getNewSession(a Aws, region string) (*session.Session, error) {
+	return session.NewSession(&aws.Config{
+		Region: aws.String(region)},
+	)
 }
 
 func getRegion() string {

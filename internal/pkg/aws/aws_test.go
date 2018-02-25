@@ -11,7 +11,6 @@ func TestGetRegion(t *testing.T) {
 	tests := []struct {
 		env    string
 		expect string
-		err    error
 	}{
 		{
 			// Test handling of no set region
