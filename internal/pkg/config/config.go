@@ -6,11 +6,10 @@ TODO: Documentation
 package config
 
 import (
-	"os"
-
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/aws"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/env"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -29,7 +28,7 @@ type LogGroup struct {
 }
 
 func (c *Configuration) LoadConfig() {
-	ssmParam := GetEnvOrDefault("SSM_CONFIG_PARAM", defaultSsmParam)
+	ssmParam := env.GetEnvOrDefault("SSM_CONFIG_PARAM", defaultSsmParam)
 
 	sess := session.Must(aws.GetSession())
 	svc := ssm.New(sess)
@@ -51,12 +50,4 @@ func readConfig(c *Configuration, data string) {
 	if err != nil {
 		log.Fatalf("Cannot unmarshal data: %v", err)
 	}
-}
-
-func GetEnvOrDefault(env string, def string) string {
-	val, set := os.LookupEnv(env)
-	if !set {
-		val = def
-	}
-	return val
 }
