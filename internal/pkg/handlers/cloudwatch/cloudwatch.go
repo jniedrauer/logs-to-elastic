@@ -1,4 +1,4 @@
-package lambdahndlr
+package cloudwatch
 
 import (
 	"fmt"

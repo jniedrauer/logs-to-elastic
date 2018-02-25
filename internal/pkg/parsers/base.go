@@ -1,27 +1,19 @@
-package handler
+package parsers
 
 import (
 	"encoding/json"
 	"errors"
 
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/config"
-	"github.com/jniedrauer/logs-to-elastic/internal/pkg/lambdahndlr"
 )
 
-type Handler interface {
-	New()
-	LoadConfig(cfg *config.Config) error
-	GetChunks() []*[]byte
-	decode(*lambdahndlr.Event)
-}
-
-type BaseHandle struct {
+type Base struct {
 	LogGroup  string
 	LogEvents []*LogEvent
 	Config    *config.LogGroup
 }
 
-func (b *BaseHandle) LoadConfig(cfg *config.Config) error {
+func (b *Base) LoadConfig(cfg *config.Config) error {
 	for _, groupcfg := range cfg.LogGroups {
 		if groupcfg.Name == b.LogGroup {
 			b.Config = &groupcfg
