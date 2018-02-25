@@ -1,53 +1,59 @@
 package logging
 
 import (
+	"errors"
 	"os"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestGetLevelDefault(t *testing.T) {
-	// Verify that getLevel returns a default if environment level is unset
-	os.Unsetenv("LOG_LEVEL")
-
-	result, err := getLevel()
-
-	if result != defaultLogLevel {
-		t.Errorf("expected %v, got %v", defaultLogLevel, result)
+func TestGetLevel(t *testing.T) {
+	tests := []struct {
+		env    string
+		expect log.Level
+		err    error
+	}{
+		{
+			expect: defaultLogLevel,
+		},
+		{
+			env:    "DEBUG",
+			expect: log.DebugLevel,
+			err:    nil,
+		},
+		{
+			env:    "INFO",
+			expect: log.InfoLevel,
+			err:    nil,
+		},
+		{
+			env:    "ERROR",
+			expect: log.ErrorLevel,
+			err:    nil,
+		},
+		{
+			env:    "FATAL",
+			expect: log.FatalLevel,
+			err:    nil,
+		},
+		{
+			env:    "fake",
+			expect: defaultLogLevel,
+			err:    errors.New(""),
+		},
 	}
 
-	if err != nil {
-		t.Errorf("got error: %v", err)
-	}
-}
+	for _, test := range tests {
+		if len(test.env) <= 0 {
+			os.Unsetenv("LOG_LEVEL")
+		} else {
+			os.Setenv("LOG_LEVEL", test.env)
+		}
 
-func TestGetLevelDebug(t *testing.T) {
-	// Verify debug logging can be set
-	os.Setenv("LOG_LEVEL", "DEBUG")
-
-	result, err := getLevel()
-
-	if result != log.DebugLevel {
-		t.Errorf("expected %v, got %v", log.DebugLevel, result)
-	}
-
-	if err != nil {
-		t.Errorf("got error: %v", err)
-	}
-}
-
-func TestGetLevelInvalid(t *testing.T) {
-	// Verify invalid level error handling
-	os.Setenv("LOG_LEVEL", "fake")
-
-	result, err := getLevel()
-
-	if result != defaultLogLevel {
-		t.Errorf("expected %v, got %v", defaultLogLevel, result)
-	}
-
-	if err == nil {
-		t.Errorf("error not raised")
+		result, err := getLevel()
+		assert.IsType(t, test.err, err)
+		assert.Equal(t, test.expect, result)
 	}
 }
