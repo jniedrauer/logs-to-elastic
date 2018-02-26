@@ -1,82 +1,51 @@
 package parsers
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/jniedrauer/logs-to-elastic/internal/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadConfig(t *testing.T) {
-	tests := []struct {
-		cfg    *config.Config
-		self   *BaseHandle
-		err    error
-		expect *config.LogGroup
-	}{
-		{
-			// Single possible match
-			cfg:    &config.Config{LogGroups: []config.LogGroup{{Name: "foo"}}},
-			self:   &BaseHandle{LogGroup: "foo"},
-			expect: &config.LogGroup{Name: "foo"},
-			err:    nil,
-		},
-		{
-			// Multiple possible matches
-			cfg:    &config.Config{LogGroups: []config.LogGroup{{Name: "foo"}, {Name: "bar"}}},
-			self:   &BaseHandle{LogGroup: "foo"},
-			expect: &config.LogGroup{Name: "foo"},
-			err:    nil,
-		},
-		{
-			// Values are loaded
-			cfg:    &config.Config{LogGroups: []config.LogGroup{{Name: "foo", IndexName: "bar"}}},
-			self:   &BaseHandle{LogGroup: "foo"},
-			expect: &config.LogGroup{Name: "foo", IndexName: "bar"},
-			err:    nil,
-		},
-		{
-			// No config found
-			cfg:  &config.Config{LogGroups: []config.LogGroup{{Name: "foo"}}},
-			self: &BaseHandle{LogGroup: "bar"},
-			err:  errors.New(""),
-		},
-	}
-
-	for _, test := range tests {
-		b := test.self
-		err := b.LoadConfig(test.cfg)
-		assert.IsType(t, test.err, err)
-		assert.Equal(t, test.expect, b.Config)
-	}
-}
-
 func TestPayloadEncode(t *testing.T) {
 	tests := []struct {
-		payload []*LogEvent
+		payload []BaseLogEvent
 		delim   string
 		expect  []byte
 		errs    []error
 	}{
 		{
 			// Single record encoding
-			payload: []*LogEvent{{Timestamp: "foo", Message: "bar"}},
-			delim:   "\n",
-			expect:  []byte("{\"timestamp\":\"foo\",\"message\":\"bar\"}"),
-			errs:    []error{nil},
+			payload: []BaseLogEvent{
+				{Timestamp: "t", Message: "m", LogGroup: "l", IndexName: "i"},
+			},
+			delim: "\n",
+			expect: []byte(
+				"{\"timestamp\":\"t\",\"message\":\"m\",\"logGroup\":\"l\",\"indexname\":\"i\"}",
+			),
+			errs: []error{nil},
 		},
 		{
 			// Multiple record encoding with delimiter
-			payload: []*LogEvent{{Timestamp: "foo", Message: "bar"}, {Timestamp: "bar", Message: "foo"}},
-			delim:   "\n",
-			expect:  []byte("{\"timestamp\":\"foo\",\"message\":\"bar\"}\n{\"timestamp\":\"bar\",\"message\":\"foo\"}"),
-			errs:    []error{nil},
+			payload: []BaseLogEvent{
+				{Timestamp: "t1", Message: "m1", LogGroup: "l1", IndexName: "i1"},
+				{Timestamp: "t2", Message: "m2", LogGroup: "l2", IndexName: "i2"},
+			},
+			delim: "\n",
+			expect: []byte(
+				"{\"timestamp\":\"t1\",\"message\":\"m1\",\"logGroup\":\"l1\",\"indexname\":\"i1\"}" +
+					"\n" +
+					"{\"timestamp\":\"t2\",\"message\":\"m2\",\"logGroup\":\"l2\",\"indexname\":\"i2\"}",
+			),
+			errs: []error{nil},
 		},
 	}
 
 	for _, test := range tests {
-		result, errs := payloadEncode(test.payload, test.delim)
+		s := make([]interface{}, len(test.payload))
+		for idx, val := range test.payload {
+			s[idx] = val
+		}
+		result, errs := payloadEncode(s, test.delim)
 		for idx, err := range errs {
 			assert.IsType(t, test.errs[idx], err)
 		}
