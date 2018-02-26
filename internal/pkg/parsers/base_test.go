@@ -8,14 +8,14 @@ import (
 
 func TestPayloadEncode(t *testing.T) {
 	tests := []struct {
-		payload []BaseLogEvent
+		payload []BaseLog
 		delim   string
 		expect  []byte
 		errs    []error
 	}{
 		{
 			// Single record encoding
-			payload: []BaseLogEvent{
+			payload: []BaseLog{
 				{Timestamp: "t", Message: "m", LogGroup: "l", IndexName: "i"},
 			},
 			delim: "\n",
@@ -26,7 +26,7 @@ func TestPayloadEncode(t *testing.T) {
 		},
 		{
 			// Multiple record encoding with delimiter
-			payload: []BaseLogEvent{
+			payload: []BaseLog{
 				{Timestamp: "t1", Message: "m1", LogGroup: "l1", IndexName: "i1"},
 				{Timestamp: "t2", Message: "m2", LogGroup: "l2", IndexName: "i2"},
 			},
@@ -45,7 +45,7 @@ func TestPayloadEncode(t *testing.T) {
 		for idx, val := range test.payload {
 			s[idx] = val
 		}
-		result, errs := payloadEncode(s, test.delim)
+		result, errs := PayloadEncode(s, test.delim)
 		for idx, err := range errs {
 			assert.IsType(t, test.errs[idx], err)
 		}

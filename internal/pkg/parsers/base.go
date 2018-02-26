@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 )
 
-type BaseLogEvent struct {
+type BaseLog struct {
 	Timestamp string `json:"timestamp"`
 	Message   string `json:"message"`
 	LogGroup  string `json:"logGroup"`
 	IndexName string `json:"indexname"`
 }
 
-func payloadEncode(payload []interface{}, delim string) ([]byte, []error) {
+func PayloadEncode(payload []interface{}, delim string) ([]byte, []error) {
 	var logs []byte
 	var errs []error
 	bdelim := []byte(delim)
