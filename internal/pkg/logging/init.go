@@ -1,3 +1,4 @@
+// Central logging configuration with logrus
 package logging
 
 import (
@@ -7,6 +8,7 @@ import (
 
 var defaultLogLevel log.Level = log.InfoLevel
 
+// Create a new root logger with configuration
 func Init() {
 	logLevel, err := getLevel()
 	log.SetLevel(logLevel)
@@ -15,6 +17,7 @@ func Init() {
 	}
 }
 
+// Get log level from an environment variable
 func getLevel() (log.Level, error) {
 	lvl := conf.GetEnvOrDefault("LOG_LEVEL", defaultLogLevel.String())
 

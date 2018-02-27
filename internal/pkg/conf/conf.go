@@ -1,3 +1,4 @@
+// Load configuration from environment variables
 package conf
 
 import (
@@ -8,6 +9,7 @@ import (
 
 var defaultRegion string = "us-east-1"
 
+// Stores configuration state
 type Conf struct {
 	Logstash  string
 	IndexName string
@@ -15,6 +17,7 @@ type Conf struct {
 	AwsRegion string
 }
 
+// Populate configuration state
 func Init() *Conf {
 	l := GetEnvOrFatal("LOGSTASH")
 	i := GetEnvOrFatal("INDEXNAME")
@@ -28,6 +31,7 @@ func Init() *Conf {
 	return &Conf{Logstash: l, IndexName: i, ChunkSize: cs}
 }
 
+// Get environment variable or return default if unset
 func GetEnvOrDefault(env string, def string) string {
 	val, set := os.LookupEnv(env)
 	if !set {
@@ -36,6 +40,7 @@ func GetEnvOrDefault(env string, def string) string {
 	return val
 }
 
+// Get environment variable or raise a fatal error
 func GetEnvOrFatal(env string) string {
 	val, set := os.LookupEnv(env)
 	if !set {

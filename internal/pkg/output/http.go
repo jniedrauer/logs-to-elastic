@@ -1,6 +1,4 @@
-/*
-HTTP client singleton
-*/
+// HTTP functions
 package output
 
 import (
@@ -15,6 +13,7 @@ import (
 var client *http.Client
 var once sync.Once
 
+// Get an HTTP client using a singleton model
 func GetClient() *http.Client {
 	once.Do(func() {
 		tr := &http.Transport{
@@ -31,6 +30,7 @@ func GetClient() *http.Client {
 	return client
 }
 
+// Send a post request and only return HTTP status code pass/fail
 func Post(endpoint string, payload []byte, c *http.Client) error {
 	resp, err := c.Post(endpoint, "text/json", bytes.NewReader(payload))
 	if err != nil {

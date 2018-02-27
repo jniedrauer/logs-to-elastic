@@ -1,3 +1,4 @@
+// Log parsing utilities
 package parsers
 
 import (
@@ -11,6 +12,7 @@ type Payloader interface {
 	GetSlice(int, int) []interface{}
 }
 
+// The minimum information that an encoded log should include
 type BaseLog struct {
 	Timestamp string `json:"timestamp"`
 	Message   string `json:"message"`
@@ -18,6 +20,7 @@ type BaseLog struct {
 	IndexName string `json:"indexname"`
 }
 
+// Encode a slice of logs for transmission
 func SliceEncode(p Payloader, idx int, end int, delim string) []byte {
 	var encoded []byte
 	bdelim := []byte(delim)
@@ -38,6 +41,7 @@ func SliceEncode(p Payloader, idx int, end int, delim string) []byte {
 	return encoded
 }
 
+// Convert a unix timestamp to ISO 8601 format
 func unixToIso8601(unix int64) string {
 	return time.Unix(unix, 0).UTC().Format("2006-01-02T15:04:05-0000")
 }

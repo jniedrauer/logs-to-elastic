@@ -1,3 +1,4 @@
+// Lambda handler for Cloudwatch Log events
 package cloudwatch
 
 import (
