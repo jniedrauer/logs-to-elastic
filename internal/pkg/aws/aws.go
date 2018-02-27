@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/jniedrauer/logs-to-elastic/internal/pkg/env"
 )
 
 var defaultRegion string = "us-east-1"
@@ -16,9 +15,8 @@ var sess *session.Session
 var sessErr error
 var once sync.Once
 
-func GetSession() (*session.Session, error) {
+func GetSession(region string) (*session.Session, error) {
 	once.Do(func() {
-		region := env.GetEnvOrDefault("AWS_REGION", defaultRegion)
 		sess, sessErr = getNewSession(region)
 	})
 

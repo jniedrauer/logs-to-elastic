@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"github.com/jniedrauer/logs-to-elastic/internal/pkg/env"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,7 +16,7 @@ func Init() {
 }
 
 func getLevel() (log.Level, error) {
-	lvl := env.GetEnvOrDefault("LOG_LEVEL", defaultLogLevel.String())
+	lvl := conf.GetEnvOrDefault("LOG_LEVEL", defaultLogLevel.String())
 
 	logLevel, err := log.ParseLevel(lvl)
 	if err != nil {
