@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type Payloader interface {
