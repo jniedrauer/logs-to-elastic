@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type Payload interface {
+type Payloader interface {
 	GetSlice(int, int) []interface{}
 }
 
@@ -18,7 +18,7 @@ type BaseLog struct {
 	IndexName string `json:"indexname"`
 }
 
-func SliceEncode(p Payload, idx int, end int, delim string) []byte {
+func SliceEncode(p Payloader, idx int, end int, delim string) []byte {
 	var encoded []byte
 	bdelim := []byte(delim)
 
