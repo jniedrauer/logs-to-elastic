@@ -22,7 +22,10 @@ func GetClient() *http.Client {
 			IdleConnTimeout:    30 * time.Second,
 			DisableCompression: true,
 		}
-		client = &http.Client{Transport: tr}
+		client = &http.Client{
+			Transport: tr,
+			Timeout:   5 * time.Second,
+		}
 	})
 
 	return client

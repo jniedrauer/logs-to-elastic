@@ -1,6 +1,7 @@
 package cloudwatch
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -28,16 +29,27 @@ func Handler(event events.CloudwatchLogsEvent) (Response, error) {
 	}
 	stream := &parsers.Cloudwatch{Event: d, IndexName: cfg.IndexName}
 
+	var errs []error
+
 	chunk.Chunk(cfg.ChunkSize, len(stream.Event.LogEvents), func(idx int, end int) {
 		payload := parsers.SliceEncode(stream, idx, end, "\n")
 		err := output.Post(cfg.Logstash, payload, c)
 		if err != nil {
 			log.Error(err)
+			log.Error("failed to transmit batch: %s", string(payload))
+			errs = append(errs, err)
 		}
 	})
 
-	return Response{
-		Message: fmt.Sprintf("sent %d records", len(stream.Event.LogEvents)),
-		Ok:      true,
-	}, nil
+	if len(errs) > 0 {
+		return Response{
+			Message: fmt.Sprintf("sent %d records", len(stream.Event.LogEvents)-len(errs)),
+			Ok:      false,
+		}, errors.New(fmt.Sprintf("failed to send %d batches", len(errs)))
+	} else {
+		return Response{
+			Message: fmt.Sprintf("sent %d records", len(stream.Event.LogEvents)),
+			Ok:      true,
+		}, nil
+	}
 }
