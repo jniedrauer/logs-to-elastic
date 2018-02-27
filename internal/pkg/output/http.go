@@ -5,12 +5,11 @@ package output
 
 import (
 	"bytes"
-	"io/ioutil"
+	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var client *http.Client
@@ -29,13 +28,15 @@ func GetClient() *http.Client {
 	return client
 }
 
-func Post(endpoint string, payload []byte, c *http.Client) ([]byte, error) {
+func Post(endpoint string, payload []byte, c *http.Client) error {
 	resp, err := c.Post(endpoint, "text/json", bytes.NewReader(payload))
 	if err != nil {
-		log.Error(err)
+		return err
 	}
 
-	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(fmt.Sprintf("Bad HTTP Status: %d", resp.StatusCode))
+	}
 
-	return ioutil.ReadAll(resp.Body)
+	return nil
 }

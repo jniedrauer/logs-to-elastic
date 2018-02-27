@@ -46,11 +46,10 @@ func Handler(event events.CloudwatchLogsEvent) (Response, error) {
 
 		c := output.GetClient()
 
-		r, err := output.Post(logstash, payload, c)
+		err := output.Post(logstash, payload, c)
 		if err != nil {
 			log.Error(err)
 		}
-		log.Debug("response: %v", string(r))
 
 		for _, err := range errs {
 			if err != nil {
