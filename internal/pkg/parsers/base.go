@@ -2,7 +2,14 @@ package parsers
 
 import (
 	"encoding/json"
+	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 )
+
+type Payload interface {
+	GetSlice(int, int) []interface{}
+}
 
 type BaseLog struct {
 	Timestamp string `json:"timestamp"`
@@ -11,23 +18,26 @@ type BaseLog struct {
 	IndexName string `json:"indexname"`
 }
 
-func PayloadEncode(payload []interface{}, delim string) ([]byte, []error) {
-	var logs []byte
-	var errs []error
+func SliceEncode(p Payload, idx int, end int, delim string) []byte {
+	var encoded []byte
 	bdelim := []byte(delim)
 
-	for _, evt := range payload {
-		// We have to do this because we might not use a json delimiter
+	for _, evt := range p.GetSlice(idx, end) {
 		enc, err := json.Marshal(evt)
 		if err != nil {
-			errs = append(errs, err)
+			log.Error("failed to encode: %v", evt)
 			continue
 		}
-		if len(logs) > 0 {
-			logs = append(logs, bdelim...)
+
+		if len(encoded) > 0 {
+			encoded = append(encoded, bdelim...)
 		}
-		logs = append(logs, enc...)
+		encoded = append(encoded, enc...)
 	}
 
-	return logs, errs
+	return encoded
+}
+
+func unixToIso8601(unix int64) string {
+	return time.Unix(unix, 0).UTC().Format("2006-01-02T15:04:05-0000")
 }
