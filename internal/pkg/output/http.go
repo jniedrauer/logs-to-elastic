@@ -36,9 +36,10 @@ func Post(endpoint string, payload []byte, c *http.Client) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Bad HTTP Status: %d", resp.StatusCode))
+		return errors.New(fmt.Sprintf("bad HTTP Status: %d", resp.StatusCode))
 	}
 
 	return nil
