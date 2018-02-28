@@ -1,5 +1,5 @@
 /*
-An AWS Lambda function for shipping ELB logs from S3 to an
+An AWS Lambda function for shipping logs from Cloudwatch Logs events to an
 HTTP listener.
 
 Required environment variables:
@@ -18,7 +18,7 @@ Optional environment variables:
 package main
 
 import (
-	"github.com/jniedrauer/logs-to-elastic/internal/pkg/handlers/elb"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/handlers/cloudwatch"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/logging"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -26,5 +26,5 @@ import (
 
 func main() {
 	logging.Init()
-	lambda.Start(elb.Handler)
+	lambda.Start(cloudwatch.Handler)
 }
