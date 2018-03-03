@@ -4,36 +4,37 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetSlice(t *testing.T) {
+func TestGetChunk(t *testing.T) {
 	tests := []struct {
-		idx    int
+		start  int
 		end    int
-		event  events.CloudwatchLogsData
+		data   events.CloudwatchLogsData
 		index  string
-		expect []BaseLog
+		expect []CloudwatchLog
 	}{
 		// Single event
 		{
-			idx:   0,
+			start: 0,
 			end:   1,
 			index: "i",
-			event: events.CloudwatchLogsData{
+			data: events.CloudwatchLogsData{
 				LogGroup:  "g",
 				LogEvents: []events.CloudwatchLogsLogEvent{{Timestamp: 0, Message: "m"}},
 			},
-			expect: []BaseLog{
+			expect: []CloudwatchLog{
 				{Timestamp: "1970-01-01T00:00:00-0000", Message: "m", LogGroup: "g", IndexName: "i"},
 			},
 		},
 		// Multiple event slice
 		{
-			idx:   1,
+			start: 1,
 			end:   3,
 			index: "i",
-			event: events.CloudwatchLogsData{
+			data: events.CloudwatchLogsData{
 				LogGroup: "g",
 				LogEvents: []events.CloudwatchLogsLogEvent{
 					{Timestamp: 0, Message: "m0"},
@@ -42,7 +43,7 @@ func TestGetSlice(t *testing.T) {
 					{Timestamp: 0, Message: "m3"},
 				},
 			},
-			expect: []BaseLog{
+			expect: []CloudwatchLog{
 				{Timestamp: "1970-01-01T00:00:00-0000", Message: "m1", LogGroup: "g", IndexName: "i"},
 				{Timestamp: "2018-02-27T03:04:53-0000", Message: "m2", LogGroup: "g", IndexName: "i"},
 			},
@@ -54,10 +55,59 @@ func TestGetSlice(t *testing.T) {
 		for i, v := range test.expect {
 			expect[i] = v
 		}
-		c := Cloudwatch{Event: test.event, IndexName: test.index}
+		c := Cloudwatch{Data: &test.data, Config: &conf.Config{IndexName: test.index}}
 
-		result := c.GetSlice(test.idx, test.end)
+		result := c.GetChunk(test.start, test.end)
 
 		assert.Equal(t, expect, result)
+	}
+}
+
+func TestGetEncodedChunk(t *testing.T) {
+	tests := []struct {
+		data   events.CloudwatchLogsData
+		delim  []byte
+		expect []byte
+	}{
+		// newline delimiter
+		{
+			data: events.CloudwatchLogsData{
+				LogGroup: "g",
+				LogEvents: []events.CloudwatchLogsLogEvent{
+					{Timestamp: 0, Message: "m1"},
+					{Timestamp: 0, Message: "m2"},
+				},
+			},
+			delim: []byte("\n"),
+			expect: []byte(
+				"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}" +
+					"\n" +
+					"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}",
+			),
+		},
+		// comma delimiter
+		{
+			data: events.CloudwatchLogsData{
+				LogGroup: "g",
+				LogEvents: []events.CloudwatchLogsLogEvent{
+					{Timestamp: 0, Message: "m1"},
+					{Timestamp: 0, Message: "m2"},
+				},
+			},
+			delim: []byte(","),
+			expect: []byte(
+				"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}" +
+					"," +
+					"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}",
+			),
+		},
+	}
+
+	for _, test := range tests {
+		c := Cloudwatch{Data: &test.data, Config: &conf.Config{IndexName: "index", Delimiter: test.delim}}
+
+		result := c.GetEncodedChunk(0, 2)
+
+		assert.Equal(t, string(test.expect), string(result))
 	}
 }

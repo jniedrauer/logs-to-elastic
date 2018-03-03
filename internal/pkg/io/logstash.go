@@ -1,13 +1,15 @@
 // HTTP functions
-package output
+package io
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
+	log "github.com/sirupsen/logrus"
 )
 
 var client *http.Client
@@ -31,16 +33,41 @@ func GetClient() *http.Client {
 }
 
 // Send a post request and only return HTTP status code pass/fail
-func Post(endpoint string, payload []byte, c *http.Client) error {
+func Post(endpoint string, payload []byte, c *http.Client) bool {
 	resp, err := c.Post(endpoint, "text/json", bytes.NewReader(payload))
 	if err != nil {
-		return err
+		log.Error(err.Error())
+		return false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("bad HTTP Status: %d", resp.StatusCode))
+		log.Error(fmt.Sprintf("bad HTTP Status: %d", resp.StatusCode))
+		return false
 	}
 
-	return nil
+	return true
+}
+
+// Asynchronous POST to endpoint
+func Consumer(in <-chan []byte, config *conf.Config) int {
+	c := GetClient()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	out := make(chan bool)
+
+	go func() {
+		for p := range in {
+			if Post(config.Logstash, p, c) {
+				out <- true
+			}
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+	close(out)
+
+	return len(out)
 }
