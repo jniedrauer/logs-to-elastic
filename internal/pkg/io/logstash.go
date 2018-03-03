@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/parsers"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -51,7 +52,7 @@ func Post(endpoint string, payload []byte, c *http.Client) bool {
 }
 
 // Asynchronous POST to endpoint
-func Consumer(in <-chan []byte, config *conf.Config) uint32 {
+func Consumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint32 {
 	c := GetClient()
 	var oks uint32
 	var wg sync.WaitGroup
@@ -59,8 +60,8 @@ func Consumer(in <-chan []byte, config *conf.Config) uint32 {
 	for p := range in {
 		wg.Add(1)
 		go func() {
-			if Post(config.Logstash, p, c) {
-				atomic.AddUint32(&oks, 1)
+			if Post(config.Logstash, p.Payload, c) {
+				atomic.AddUint32(&oks, p.Records)
 			}
 			wg.Done()
 		}()

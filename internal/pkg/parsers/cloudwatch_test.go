@@ -115,10 +115,12 @@ func TestGetEncodedChunk(t *testing.T) {
 
 func TestGetChunks(t *testing.T) {
 	tests := []struct {
-		data   events.CloudwatchLogsData
-		expect [][]byte
+		data        events.CloudwatchLogsData
+		chunkSize   int
+		expectCount uint32
+		expect      [][]byte
 	}{
-		// Single event
+		// Test output with single record per chunk
 		{
 			data: events.CloudwatchLogsData{
 				LogGroup: "g",
@@ -127,33 +129,55 @@ func TestGetChunks(t *testing.T) {
 					{Timestamp: 0, Message: "m2"},
 				},
 			},
+			chunkSize:   1,
+			expectCount: 2,
 			expect: [][]byte{
 				[]byte("{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
 				[]byte("{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
 			},
 		},
+		// Test mismatched chunks and records to verify that count is correct
+		{
+			data: events.CloudwatchLogsData{
+				LogGroup: "g",
+				LogEvents: []events.CloudwatchLogsLogEvent{
+					{Timestamp: 0, Message: "m1"},
+					{Timestamp: 0, Message: "m2"},
+					{Timestamp: 0, Message: "m3"},
+				},
+			},
+			chunkSize:   2,
+			expectCount: 3,
+		},
 	}
 
 	for _, test := range tests {
-		config := conf.Config{IndexName: "index", Delimiter: []byte(","), ChunkSize: 1}
+		config := conf.Config{IndexName: "index", Delimiter: []byte(","), ChunkSize: test.chunkSize}
 		c := Cloudwatch{Data: &test.data, Config: &config}
 
 		results := c.GetChunks()
 		unmatched := test.expect
+
+		var resultCount uint32
 
 		/* The results come in asyncronously so we have to check all possible
 		results against all expected results and remove them as they match.
 		The end result should be no unmatched elements from the expected list */
 		for result := range results {
 			for i, expect := range test.expect {
-				if reflect.DeepEqual(expect, result) {
+				if reflect.DeepEqual(expect, result.Payload) {
 					// Pop element off the unmatched slice
 					unmatched[i] = unmatched[len(unmatched)-1]
 					unmatched = unmatched[:len(unmatched)-1]
 					break
 				}
 			}
+			resultCount += result.Records
 		}
-		assert.Equal(t, 0, len(unmatched))
+		// Only run this test if we are asserting output
+		if len(test.expect) > 0 {
+			assert.Equal(t, 0, len(unmatched))
+		}
+		assert.Equal(t, int(test.expectCount), int(resultCount))
 	}
 }

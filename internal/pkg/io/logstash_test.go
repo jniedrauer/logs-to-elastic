@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/parsers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -107,10 +108,10 @@ func TestConsumer(t *testing.T) {
 		cfg := conf.Config{Logstash: ts.URL}
 
 		// Fake channel
-		out := make(chan []byte, 10)
+		out := make(chan *parsers.EncodedChunk, 10)
 		go func() {
 			for i := 0; i < test.input; i++ {
-				out <- []byte("f")
+				out <- &parsers.EncodedChunk{Payload: []byte("f"), Records: 1}
 			}
 			close(out)
 		}()

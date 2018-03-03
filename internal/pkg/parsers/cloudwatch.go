@@ -24,15 +24,20 @@ type Cloudwatch struct {
 	Config *conf.Config
 }
 
-func (c *Cloudwatch) GetChunks() <-chan []byte {
+type EncodedChunk struct {
+	Payload []byte
+	Records uint32
+}
+
+func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 	var wg sync.WaitGroup
 
-	out := make(chan []byte, 10)
+	out := make(chan *EncodedChunk, 10)
 
 	Chunk(c.Config.ChunkSize, len(c.Data.LogEvents), func(start int, end int) {
 		wg.Add(1)
 		go func() {
-			out <- c.GetEncodedChunk(start, end)
+			out <- &EncodedChunk{Payload: c.GetEncodedChunk(start, end), Records: uint32(end - start)}
 			wg.Done()
 		}()
 	})
