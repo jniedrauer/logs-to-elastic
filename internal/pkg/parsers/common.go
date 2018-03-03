@@ -47,7 +47,7 @@ func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) []interf
 }
 
 // Get number of newlines in a Reader
-func LineCount(r io.Reader) int {
+func LineCount(r io.Reader) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0
 	lineSep := []byte{'\n'}
@@ -58,10 +58,10 @@ func LineCount(r io.Reader) int {
 
 		switch {
 		case err == io.EOF:
-			return count
+			return count, nil
 
 		case err != nil:
-			log.Fatalf(err.Error())
+			return count, err
 		}
 	}
 }
@@ -81,7 +81,7 @@ func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64) {
 		if scanner.Scan() {
 			bytes := scanner.Bytes()
 			offset += int64(len(bytes))
-			output := append(output, bytes)
+			output = append(output, bytes)
 		} else if err := scanner.Err(); err != nil {
 			log.Fatalf(err.Error())
 		} else {

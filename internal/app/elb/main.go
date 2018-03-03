@@ -17,9 +17,13 @@ Optional environment variables:
 */
 package main
 
+import (
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/handlers"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/logging"
+)
+
 func main() {
-	/*
-		logging.Init()
-		lambda.Start(cloudwatch.Handler)
-	*/
+	logging.Init()
+	lambda.Start(handlers.ElbHandler)
 }
