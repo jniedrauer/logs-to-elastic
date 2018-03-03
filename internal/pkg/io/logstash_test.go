@@ -1,7 +1,6 @@
 package io
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -40,19 +39,22 @@ func TestGetClientReuse(t *testing.T) {
 
 func TestPost(t *testing.T) {
 	tests := []struct {
-		payload []byte
-		code    int
-		err     error
+		endpoint string
+		payload  []byte
+		code     int
+		expect   bool
 	}{
 		{
-			payload: []byte("{\"key\":\"value\"}"),
-			code:    200,
-			err:     nil,
+			endpoint: "http://testurl",
+			payload:  []byte("{\"key\":\"value\"}"),
+			code:     200,
+			expect:   true,
 		},
 		{
-			payload: []byte("{\"key\":\"value\"}"),
-			code:    500,
-			err:     errors.New(""),
+			endpoint: "localhost",
+			payload:  []byte("{\"key\":\"value\"}"),
+			code:     500,
+			expect:   false,
 		},
 	}
 
@@ -68,7 +70,7 @@ func TestPost(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		err := Post(ts.URL, test.payload, c)
-		assert.IsType(t, test.err, err)
+		result := Post(ts.URL, test.payload, c)
+		assert.Equal(t, test.expect, result)
 	}
 }
