@@ -14,12 +14,15 @@ func CloudwatchHandler(event *events.CloudwatchLogsEvent) (Response, error) {
 
 	cfg := conf.NewConfig()
 
+	log.Debug("decoding event")
 	d, err := event.AWSLogs.Parse()
 	if err != nil {
 		log.Fatalf("failed to decode event")
 	}
 
 	p := parsers.Cloudwatch{&d, cfg}
+
+	log.Debug("transmitting logs")
 	oks := io.Consumer(p.GetChunks(), cfg)
 
 	return NewResponse(int(oks), len(d.LogEvents))

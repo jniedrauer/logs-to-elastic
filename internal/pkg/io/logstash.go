@@ -63,6 +63,7 @@ func Consumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint32 {
 			if Post(config.Logstash, p.Payload, c) {
 				atomic.AddUint32(&oks, p.Records)
 			}
+			log.Debug("transmitted record: ", oks)
 			wg.Done()
 		}()
 	}
