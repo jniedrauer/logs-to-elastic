@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,6 +72,51 @@ func TestPost(t *testing.T) {
 		defer ts.Close()
 
 		result := Post(ts.URL, test.payload, c)
+		assert.Equal(t, test.expect, result)
+	}
+}
+
+func TestConsumer(t *testing.T) {
+	tests := []struct {
+		input  int
+		code   int
+		expect uint32
+	}{
+		{
+			input:  3,
+			code:   200,
+			expect: 3,
+		},
+		{
+			input:  3,
+			code:   500,
+			expect: 0,
+		},
+	}
+
+	for _, test := range tests {
+		// Fake http endpoint
+		client = &http.Client{}
+		once = sync.Once{}
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(test.code)
+		}))
+		defer ts.Close()
+
+		// Fake config
+		cfg := conf.Config{Logstash: ts.URL}
+
+		// Fake channel
+		out := make(chan []byte, 10)
+		go func() {
+			for i := 0; i < test.input; i++ {
+				out <- []byte("f")
+			}
+			close(out)
+		}()
+
+		result := Consumer(out, &cfg)
+
 		assert.Equal(t, test.expect, result)
 	}
 }

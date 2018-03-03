@@ -20,6 +20,7 @@ func CloudwatchHandler(event *events.CloudwatchLogsEvent) (Response, error) {
 	}
 
 	p := parsers.Cloudwatch{&d, cfg}
+	oks := io.Consumer(p.GetChunks(), cfg)
 
-	return NewResponse(io.Consumer(p.GetChunks(), cfg), len(d.LogEvents))
+	return NewResponse(int(oks), len(d.LogEvents))
 }

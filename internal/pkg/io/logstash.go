@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
@@ -50,24 +51,22 @@ func Post(endpoint string, payload []byte, c *http.Client) bool {
 }
 
 // Asynchronous POST to endpoint
-func Consumer(in <-chan []byte, config *conf.Config) int {
+func Consumer(in <-chan []byte, config *conf.Config) uint32 {
 	c := GetClient()
-
+	var oks uint32
 	var wg sync.WaitGroup
-	wg.Add(1)
-	out := make(chan bool)
 
-	go func() {
-		for p := range in {
+	for p := range in {
+		wg.Add(1)
+		go func() {
 			if Post(config.Logstash, p, c) {
-				out <- true
+				atomic.AddUint32(&oks, 1)
 			}
-		}
-		wg.Done()
-	}()
+			wg.Done()
+		}()
+	}
 
 	wg.Wait()
-	close(out)
 
-	return len(out)
+	return atomic.LoadUint32(&oks)
 }
