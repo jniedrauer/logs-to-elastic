@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -24,12 +25,20 @@ type Cloudwatch struct {
 }
 
 func (c *Cloudwatch) GetChunks() <-chan []byte {
-	out := make(chan []byte)
+	var wg sync.WaitGroup
+
+	out := make(chan []byte, 10)
+
+	Chunk(c.Config.ChunkSize, len(c.Data.LogEvents), func(start int, end int) {
+		wg.Add(1)
+		go func() {
+			out <- c.GetEncodedChunk(start, end)
+			wg.Done()
+		}()
+	})
 
 	go func() {
-		Chunk(c.Config.ChunkSize, len(c.Data.LogEvents), func(start int, end int) {
-			out <- c.GetEncodedChunk(start, end)
-		})
+		wg.Wait()
 		close(out)
 	}()
 

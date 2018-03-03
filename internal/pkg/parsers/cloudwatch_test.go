@@ -1,6 +1,7 @@
 package parsers
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -109,5 +110,50 @@ func TestGetEncodedChunk(t *testing.T) {
 		result := c.GetEncodedChunk(0, 2)
 
 		assert.Equal(t, string(test.expect), string(result))
+	}
+}
+
+func TestGetChunks(t *testing.T) {
+	tests := []struct {
+		data   events.CloudwatchLogsData
+		expect [][]byte
+	}{
+		// Single event
+		{
+			data: events.CloudwatchLogsData{
+				LogGroup: "g",
+				LogEvents: []events.CloudwatchLogsLogEvent{
+					{Timestamp: 0, Message: "m1"},
+					{Timestamp: 0, Message: "m2"},
+				},
+			},
+			expect: [][]byte{
+				[]byte("{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
+				[]byte("{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		config := conf.Config{IndexName: "index", Delimiter: []byte(","), ChunkSize: 1}
+		c := Cloudwatch{Data: &test.data, Config: &config}
+
+		results := c.GetChunks()
+		unmatched := test.expect
+
+		/* The results come in asyncronously so we have to check all possible
+		results against all expected results and remove them as they match.
+		The end result should be no unmatched elements from the expected list */
+		for result := range results {
+			for i, expect := range test.expect {
+				if reflect.DeepEqual(expect, result) {
+					// Pop element off the unmatched slice
+					unmatched[i] = unmatched[len(unmatched)-1]
+					unmatched = unmatched[:len(unmatched)-1]
+					break
+				}
+			}
+		}
+		assert.Equal(t, 0, len(unmatched))
 	}
 }
