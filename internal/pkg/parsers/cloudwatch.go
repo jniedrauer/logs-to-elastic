@@ -1,7 +1,6 @@
 package parsers
 
 import (
-	"encoding/json"
 	"sync"
 	"time"
 
@@ -38,7 +37,10 @@ func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 		wg.Add(1)
 		go func() {
 			log.Debug("encoding chunk")
-			out <- &EncodedChunk{Payload: c.GetEncodedChunk(start, end), Records: uint32(end - start)}
+			out <- &EncodedChunk{
+				Payload: GetEncodedChunk(start, end, c.Config.Delimiter, c.GetChunk),
+				Records: uint32(end - start),
+			}
 			wg.Done()
 		}()
 	})
@@ -49,26 +51,6 @@ func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 	}()
 
 	return out
-}
-
-// Return an encoded chunk of logs
-func (c *Cloudwatch) GetEncodedChunk(start int, end int) []byte {
-	var enc []byte
-
-	for _, v := range c.GetChunk(start, end) {
-		j, err := json.Marshal(v)
-		if err != nil {
-			log.Error("failed to encode: %v", v)
-			continue
-		}
-
-		if len(enc) > 0 {
-			enc = append(enc, c.Config.Delimiter...)
-		}
-		enc = append(enc, j...)
-	}
-
-	return enc
 }
 
 // Return a slice of logs with logstash keys

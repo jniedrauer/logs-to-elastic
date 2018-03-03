@@ -64,55 +64,6 @@ func TestGetChunk(t *testing.T) {
 	}
 }
 
-func TestGetEncodedChunk(t *testing.T) {
-	tests := []struct {
-		data   events.CloudwatchLogsData
-		delim  []byte
-		expect []byte
-	}{
-		// newline delimiter
-		{
-			data: events.CloudwatchLogsData{
-				LogGroup: "g",
-				LogEvents: []events.CloudwatchLogsLogEvent{
-					{Timestamp: 0, Message: "m1"},
-					{Timestamp: 0, Message: "m2"},
-				},
-			},
-			delim: []byte("\n"),
-			expect: []byte(
-				"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}" +
-					"\n" +
-					"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}",
-			),
-		},
-		// comma delimiter
-		{
-			data: events.CloudwatchLogsData{
-				LogGroup: "g",
-				LogEvents: []events.CloudwatchLogsLogEvent{
-					{Timestamp: 0, Message: "m1"},
-					{Timestamp: 0, Message: "m2"},
-				},
-			},
-			delim: []byte(","),
-			expect: []byte(
-				"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}" +
-					"," +
-					"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}",
-			),
-		},
-	}
-
-	for _, test := range tests {
-		c := Cloudwatch{Data: &test.data, Config: &conf.Config{IndexName: "index", Delimiter: test.delim}}
-
-		result := c.GetEncodedChunk(0, 2)
-
-		assert.Equal(t, string(test.expect), string(result))
-	}
-}
-
 func TestGetChunks(t *testing.T) {
 	tests := []struct {
 		data        events.CloudwatchLogsData
