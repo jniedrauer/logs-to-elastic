@@ -9,25 +9,37 @@ import (
 
 func TestInit(t *testing.T) {
 	tests := []struct {
-		lenv   string
+		aenv   string
+		denv   string
 		ienv   string
+		lenv   string
 		csenv  string
-		expect Conf
+		expect Config
 	}{
 		{
-			lenv:   "logstash",
-			ienv:   "indexname",
-			csenv:  "100",
-			expect: Conf{Logstash: "logstash", IndexName: "indexname", ChunkSize: 100},
+			aenv:  "us-west-2",
+			denv:  ",",
+			ienv:  "indexname",
+			lenv:  "logstash",
+			csenv: "100",
+			expect: Config{
+				AwsRegion: "us-west-2",
+				Delimiter: []byte(","),
+				IndexName: "indexname",
+				Logstash:  "logstash",
+				ChunkSize: 100,
+			},
 		},
 	}
 
 	for _, test := range tests {
-		os.Setenv("LOGSTASH", test.lenv)
+		os.Setenv("AWS_REGION", test.aenv)
+		os.Setenv("DELIMITER", test.denv)
 		os.Setenv("INDEXNAME", test.ienv)
+		os.Setenv("LOGSTASH", test.lenv)
 		os.Setenv("CHUNK_SIZE", test.csenv)
 
-		result := Init()
+		result := NewConfig()
 
 		assert.Equal(t, test.expect, *result)
 	}
