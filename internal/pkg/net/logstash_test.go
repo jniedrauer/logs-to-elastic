@@ -1,4 +1,4 @@
-package io
+package net
 
 import (
 	"fmt"
@@ -77,7 +77,7 @@ func TestPost(t *testing.T) {
 	}
 }
 
-func TestConsumer(t *testing.T) {
+func TestLogstashConsumer(t *testing.T) {
 	tests := []struct {
 		input  int
 		code   int
@@ -116,7 +116,7 @@ func TestConsumer(t *testing.T) {
 			close(out)
 		}()
 
-		result := Consumer(out, &cfg)
+		result := LogstashConsumer(out, &cfg)
 
 		assert.Equal(t, test.expect, result)
 	}

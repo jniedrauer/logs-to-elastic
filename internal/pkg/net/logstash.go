@@ -1,5 +1,5 @@
 // HTTP functions
-package io
+package net
 
 import (
 	"bytes"
@@ -52,7 +52,7 @@ func Post(endpoint string, payload []byte, c *http.Client) bool {
 }
 
 // Asynchronous POST to endpoint
-func Consumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint32 {
+func LogstashConsumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint32 {
 	c := GetClient()
 	var oks uint32
 	var wg sync.WaitGroup

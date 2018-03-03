@@ -23,11 +23,6 @@ type Cloudwatch struct {
 	Config *conf.Config
 }
 
-type EncodedChunk struct {
-	Payload []byte
-	Records uint32
-}
-
 func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 	var wg sync.WaitGroup
 

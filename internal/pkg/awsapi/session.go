@@ -1,5 +1,5 @@
 // Cache AWS services between Lambda invocations using a singleton model
-package aws
+package awsapi
 
 import (
 	"sync"
