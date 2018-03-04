@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 
 	log "github.com/sirupsen/logrus"
@@ -27,10 +28,15 @@ func Chunk(chunkSize int, length int, f func(int, int)) {
 }
 
 // Return an encoded chunk of logs
-func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) []interface{}) []byte {
+func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) ([]interface{}, error)) ([]byte, error) {
 	var enc []byte
 
-	for _, v := range f(start, end) {
+	chunk, err := f(start, end)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	for _, v := range chunk {
 		j, err := json.Marshal(v)
 		if err != nil {
 			log.Error("failed to encode: %v", v)
@@ -43,7 +49,7 @@ func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) []interf
 		enc = append(enc, j...)
 	}
 
-	return enc
+	return enc, nil
 }
 
 // Get number of newlines in a Reader
@@ -58,7 +64,11 @@ func LineCount(r io.Reader) (int, error) {
 
 		switch {
 		case err == io.EOF:
-			return count, nil
+			if count <= 0 {
+				return 1, errors.New("no newline found")
+			} else {
+				return count, nil
+			}
 
 		case err != nil:
 			return count, err
@@ -67,11 +77,11 @@ func LineCount(r io.Reader) (int, error) {
 }
 
 // Get a number of lines starting at a byte offset
-func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64) {
+func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64, error) {
 	var output [][]byte
 
 	if _, err := data.Seek(start, 0); err != nil {
-		log.Fatalf(err.Error())
+		return [][]byte{}, 1, err
 	}
 
 	scanner := bufio.NewScanner(data)
@@ -80,14 +90,14 @@ func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64) {
 	for i := 0; i < lines; i++ {
 		if scanner.Scan() {
 			bytes := scanner.Bytes()
-			offset += int64(len(bytes))
+			offset += int64(len(bytes) + 1) // 1 here is for the newline byte
 			output = append(output, bytes)
 		} else if err := scanner.Err(); err != nil {
-			log.Fatalf(err.Error())
+			return [][]byte{}, offset, err
 		} else {
 			break
 		}
 	}
 
-	return output, offset
+	return output, offset, nil
 }

@@ -62,14 +62,22 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 
 		err = awsapi.GetFromS3(e.BufferFile, &r.S3, e.Config.AwsRegion)
 
-		e.LineCount, err = LineCount(e.BufferFile)
+		lc, lcerr := LineCount(e.BufferFile)
+		if lcerr != nil {
+			log.Error("line count may be incorrect")
+		}
+		e.LineCount += lc
 
 		Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
 			wg.Add(1)
 			go func() {
 				log.Debug("encoding chunk from offset: ", e.ReaderOffset)
+				payload, perr := GetEncodedChunk(start, end, e.Config.Delimiter, e.GetChunk)
+				if perr != nil {
+					log.Error(err.Error())
+				}
 				out <- &EncodedChunk{
-					Payload: GetEncodedChunk(start, end, e.Config.Delimiter, e.GetChunk),
+					Payload: payload,
 					Records: uint32(end - start),
 				}
 				wg.Done()
@@ -95,9 +103,12 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 }
 
 // Return a slice of logs with logstash keys
-func (e *Elb) GetChunk(start int, end int) []interface{} {
+func (e *Elb) GetChunk(start int, end int) ([]interface{}, error) {
 	lc := int(end - start)
-	lines, offset := GetLines(e.ReaderOffset, lc, e.BufferFile)
+	lines, offset, err := GetLines(e.ReaderOffset, lc, e.BufferFile)
+	if err != nil {
+		return make([]interface{}, 0), err
+	}
 	atomic.AddInt64(&e.ReaderOffset, offset)
 
 	l := make([]interface{}, lc)
@@ -134,7 +145,7 @@ func (e *Elb) GetChunk(start int, end int) []interface{} {
 		}
 	}
 
-	return l
+	return l, nil
 }
 
 // Split an ELB record into its parts

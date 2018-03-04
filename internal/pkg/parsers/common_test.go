@@ -1,6 +1,9 @@
 package parsers
 
 import (
+	"bytes"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -46,6 +49,7 @@ func TestGetEncodedChunk(t *testing.T) {
 	tests := []struct {
 		data   events.CloudwatchLogsData
 		delim  []byte
+		err    error
 		expect []byte
 	}{
 		// newline delimiter
@@ -85,8 +89,101 @@ func TestGetEncodedChunk(t *testing.T) {
 	for _, test := range tests {
 		c := Cloudwatch{Data: &test.data, Config: &conf.Config{IndexName: "index", Delimiter: test.delim}}
 
-		result := GetEncodedChunk(0, 2, c.Config.Delimiter, c.GetChunk)
+		result, err := GetEncodedChunk(0, 2, c.Config.Delimiter, c.GetChunk)
 
+		assert.IsType(t, test.err, err)
 		assert.Equal(t, string(test.expect), string(result))
+	}
+}
+
+func TestLineCount(t *testing.T) {
+	tests := []struct {
+		data   io.Reader
+		err    error
+		expect int
+	}{
+		// Single line
+		{
+			data:   bytes.NewReader([]byte("test\n")),
+			err:    nil,
+			expect: 1,
+		},
+		// No newline
+		{
+			data:   bytes.NewReader([]byte("test")),
+			err:    errors.New(""),
+			expect: 1,
+		},
+		// Multiple lines
+		{
+			data:   bytes.NewReader([]byte("test1\ntest2\ntest3\n")),
+			err:    nil,
+			expect: 3,
+		},
+	}
+
+	for _, test := range tests {
+		result, err := LineCount(test.data)
+
+		assert.IsType(t, test.err, err)
+		assert.Equal(t, test.expect, result)
+	}
+}
+
+func TestGetLines(t *testing.T) {
+	tests := []struct {
+		start        int64
+		lines        int
+		data         io.ReadSeeker
+		err          error
+		expectData   [][]byte
+		expectOffset int64
+	}{
+		// 1 line, no offset
+		{
+			start:        0,
+			lines:        1,
+			data:         bytes.NewReader([]byte("test\n")),
+			err:          nil,
+			expectData:   [][]byte{[]byte("test")},
+			expectOffset: int64(len([]byte("test\n"))),
+		},
+		// 2 lines, no offset
+		{
+			start:        0,
+			lines:        2,
+			data:         bytes.NewReader([]byte("test1\ntest2\n")),
+			err:          nil,
+			expectData:   [][]byte{[]byte("test1"), []byte("test2")},
+			expectOffset: int64(len([]byte("test1\ntest2\n"))),
+		},
+		// Multiline slice, with offset
+		{
+			start:        6,
+			lines:        1,
+			data:         bytes.NewReader([]byte("test1\ntest2\ntest2\n")),
+			err:          nil,
+			expectData:   [][]byte{[]byte("test2")},
+			expectOffset: int64(len([]byte("test2\n"))),
+		},
+		// Ask for more lines than are left before EOF
+		{
+			start:        0,
+			lines:        10,
+			data:         bytes.NewReader([]byte("test1\ntest2\n")),
+			err:          nil,
+			expectData:   [][]byte{[]byte("test1"), []byte("test2")},
+			expectOffset: int64(len([]byte("test1\ntest2\n"))),
+		},
+	}
+
+	for _, test := range tests {
+		result, offset, err := GetLines(test.start, test.lines, test.data)
+
+		assert.IsType(t, test.err, err)
+		for i, v := range test.expectData {
+			assert.Equal(t, string(v), string(result[i]))
+		}
+		assert.Equal(t, test.expectOffset, offset)
 	}
 }

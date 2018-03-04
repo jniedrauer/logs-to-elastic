@@ -15,6 +15,7 @@ func TestGetChunk(t *testing.T) {
 		end    int
 		data   events.CloudwatchLogsData
 		index  string
+		err    error
 		expect []CloudwatchLog
 	}{
 		// Single event
@@ -26,6 +27,7 @@ func TestGetChunk(t *testing.T) {
 				LogGroup:  "g",
 				LogEvents: []events.CloudwatchLogsLogEvent{{Timestamp: 0, Message: "m"}},
 			},
+			err: nil,
 			expect: []CloudwatchLog{
 				{Timestamp: "1970-01-01T00:00:00-0000", Message: "m", LogGroup: "g", IndexName: "i"},
 			},
@@ -44,6 +46,7 @@ func TestGetChunk(t *testing.T) {
 					{Timestamp: 0, Message: "m3"},
 				},
 			},
+			err: nil,
 			expect: []CloudwatchLog{
 				{Timestamp: "1970-01-01T00:00:00-0000", Message: "m1", LogGroup: "g", IndexName: "i"},
 				{Timestamp: "2018-02-27T03:04:53-0000", Message: "m2", LogGroup: "g", IndexName: "i"},
@@ -58,8 +61,9 @@ func TestGetChunk(t *testing.T) {
 		}
 		c := Cloudwatch{Data: &test.data, Config: &conf.Config{IndexName: test.index}}
 
-		result := c.GetChunk(test.start, test.end)
+		result, err := c.GetChunk(test.start, test.end)
 
+		assert.IsType(t, test.err, err)
 		assert.Equal(t, expect, result)
 	}
 }

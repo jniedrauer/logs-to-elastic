@@ -32,8 +32,12 @@ func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 		wg.Add(1)
 		go func() {
 			log.Debug("encoding chunk")
+			payload, err := GetEncodedChunk(start, end, c.Config.Delimiter, c.GetChunk)
+			if err != nil {
+				log.Error(err.Error())
+			}
 			out <- &EncodedChunk{
-				Payload: GetEncodedChunk(start, end, c.Config.Delimiter, c.GetChunk),
+				Payload: payload,
 				Records: uint32(end - start),
 			}
 			wg.Done()
@@ -49,7 +53,7 @@ func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 }
 
 // Return a slice of logs with logstash keys
-func (c *Cloudwatch) GetChunk(start int, end int) []interface{} {
+func (c *Cloudwatch) GetChunk(start int, end int) ([]interface{}, error) {
 	l := make([]interface{}, end-start)
 	for i, v := range c.Data.LogEvents[start:end] {
 		l[i] = CloudwatchLog{
@@ -60,7 +64,7 @@ func (c *Cloudwatch) GetChunk(start int, end int) []interface{} {
 		}
 	}
 
-	return l
+	return l, nil
 }
 
 // Convert a unix timestamp to ISO 8601 format
