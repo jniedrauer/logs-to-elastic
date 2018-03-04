@@ -1,7 +1,6 @@
 package parsers
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -32,8 +31,6 @@ func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 	Chunk(c.Config.ChunkSize, len(c.Data.LogEvents), func(start int, end int) {
 		wg.Add(1)
 		go func(start int, end int) {
-			log.Debug(fmt.Sprintf("encoding chunk %d-%d", start, end))
-
 			data, err := c.GetChunk(start, end)
 			if err != nil {
 				wg.Done()

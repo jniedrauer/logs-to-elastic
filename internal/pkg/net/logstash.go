@@ -3,7 +3,6 @@ package net
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -39,15 +38,16 @@ func GetClient() *http.Client {
 
 // Send a post request and only return HTTP status code pass/fail
 func Post(endpoint string, payload []byte, c *http.Client) bool {
-	resp, err := c.Post(endpoint, "text/json", bytes.NewReader(payload))
+	resp, err := c.Post(endpoint, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		log.Error(err.Error())
 		return false
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error(fmt.Sprintf("bad HTTP Status: %d", resp.StatusCode))
+		log.Error("bad HTTP Status: ", resp.StatusCode)
 		return false
 	}
 
@@ -66,7 +66,7 @@ func LogstashConsumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint
 			if Post(config.Logstash, p.Payload, c) {
 				atomic.AddUint32(&oks, p.Records)
 			}
-			log.Debug(fmt.Sprintf("transmitted batch: %d, total: %d", p.Records, oks))
+			log.Debug("transmitted batch: ", p.Records, ", total: ", oks)
 			wg.Done()
 		}(p)
 	}

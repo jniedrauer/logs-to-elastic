@@ -92,14 +92,10 @@ func GetLines(start int64, lines int, fileName string) ([][]byte, int64, error) 
 		return output, start, err
 	}
 
-	log.Debug("generating a scanner")
 	scanner := bufio.NewScanner(file)
 
 	var offset int64 = 0
 	for i := 0; i < lines; i++ {
-
-		log.Debug("reading line ", i)
-
 		if scanner.Scan() {
 			bytes := scanner.Bytes()
 			offset += int64(len(bytes) + 1) // 1 here is for the newline byte

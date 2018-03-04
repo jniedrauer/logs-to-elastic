@@ -49,29 +49,32 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 	out := make(chan *EncodedChunk, 10) // Buffer up to 10 records before transmitting
 
 	for _, r := range e.Records {
-		err := e.ParseRecord(&r, wg, out)
+		err := e.ParseRecord(&r, &wg, out)
 		if err != nil {
 			log.Error(err.Error())
 			continue
 		}
 	}
 
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+
 	return out
 }
 
 // Handle a single record
-func (e *Elb) ParseRecord(record *events.S3EventRecord, wg sync.WaitGroup, out chan<- *EncodedChunk) error {
+func (e *Elb) ParseRecord(record *events.S3EventRecord, wg *sync.WaitGroup, out chan<- *EncodedChunk) error {
 	// Get the log file from S3
 	rOffset := int64(0) // Reader offset for file
 	fileName, err := awsapi.GetFromS3(&record.S3, e.Config.AwsRegion)
-	log.Debug("download complete")
 	if err != nil {
 		os.Remove(fileName)
 		return err
 	}
 
 	// Count number of lines in the file
-	log.Debug("counting lines in file")
 	lc, err := LineCount(fileName)
 	if err != nil {
 		log.Error(err.Error())
@@ -81,10 +84,7 @@ func (e *Elb) ParseRecord(record *events.S3EventRecord, wg sync.WaitGroup, out c
 
 	Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
 		wg.Add(1)
-		log.Debug("start: ", start, ", end: ", end)
 		go func(start int, end int, fileName string, rOffset *int64) {
-			log.Debug("encoding chunk from offset: ", rOffset)
-
 			data, err := e.GetChunk(start, end, fileName, rOffset)
 			if err != nil {
 				wg.Done()
@@ -120,9 +120,7 @@ func (e *Elb) ParseRecord(record *events.S3EventRecord, wg sync.WaitGroup, out c
 func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]interface{}, error) {
 	lc := int(end - start)
 
-	log.Debug("reading lines ", start, "-", end, " at offset ", rOffset)
-
-	lines, offset, err := GetLines(*rOffset, lc, fileName)
+	lines, offset, err := GetLines(atomic.LoadInt64(rOffset), lc, fileName)
 	if err != nil {
 		return make([]interface{}, 0), err
 	}
