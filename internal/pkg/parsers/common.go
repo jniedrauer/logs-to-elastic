@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -33,7 +34,7 @@ func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) ([]inter
 
 	chunk, err := f(start, end)
 	if err != nil {
-		return []byte{}, err
+		return make([]byte, 0), err
 	}
 
 	for _, v := range chunk {
@@ -53,13 +54,19 @@ func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) ([]inter
 }
 
 // Get number of newlines in a Reader
-func LineCount(r io.Reader) (int, error) {
+func LineCount(r *os.File) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0
 	lineSep := []byte{'\n'}
 
+	file, err := os.Open(r.Name())
+	defer file.Close()
+	if err != nil {
+		closeAndDie(file, err)
+	}
+
 	for {
-		c, err := r.Read(buf)
+		c, err := file.Read(buf)
 		count += bytes.Count(buf[:c], lineSep)
 
 		switch {
@@ -77,17 +84,28 @@ func LineCount(r io.Reader) (int, error) {
 }
 
 // Get a number of lines starting at a byte offset
-func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64, error) {
+func GetLines(start int64, lines int, data *os.File) ([][]byte, int64, error) {
 	var output [][]byte
 
-	if _, err := data.Seek(start, io.SeekStart); err != nil {
-		return [][]byte{}, 1, err
+	file, err := os.Open(data.Name())
+	defer file.Close()
+
+	if err != nil {
+		closeAndDie(file, err)
 	}
 
-	scanner := bufio.NewScanner(data)
+	if _, err := file.Seek(start, io.SeekStart); err != nil {
+		return make([][]byte, 0), 1, err
+	}
+
+	log.Debug("generating a scanner")
+	scanner := bufio.NewScanner(file)
 
 	var offset int64 = 0
 	for i := 0; i < lines; i++ {
+
+		log.Debug("reading line ", i)
+
 		if scanner.Scan() {
 			bytes := scanner.Bytes()
 			offset += int64(len(bytes) + 1) // 1 here is for the newline byte
@@ -100,4 +118,11 @@ func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64, erro
 	}
 
 	return output, offset, nil
+}
+
+// Close file, delete, and panic
+func closeAndDie(file *os.File, err error) {
+	file.Close()
+	os.Remove(file.Name())
+	log.Fatalf(err.Error())
 }

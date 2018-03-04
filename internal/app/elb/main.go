@@ -1,6 +1,6 @@
 /*
-An AWS Lambda function for shipping logs from Cloudwatch Logs events to an
-HTTP listener.
+An AWS Lambda function for shipping logs from S3 ELB access Logs events
+to an HTTP listener.
 
 Required environment variables:
   CHUNK_SIZE:
@@ -14,6 +14,8 @@ Required environment variables:
 Optional environment variables:
   LOG_LEVEL:
     Minimum log level for this function's logging.
+  DELIMITER:
+    Delimiter character to use between records when encoding.
 */
 package main
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	log "github.com/sirupsen/logrus"
 )
 
 var defaultRegion string = "us-east-1"
@@ -24,6 +25,7 @@ func GetSession(region string) (*session.Session, error) {
 
 // Create a new AWS session to region
 func getNewSession(region string) (*session.Session, error) {
+	log.Debug("creating a new session in region: ", region)
 	return session.NewSession(&aws.Config{
 		Region: aws.String(region)},
 	)

@@ -10,13 +10,13 @@ import (
 )
 
 func ElbHandler(event *events.S3Event) (Response, error) {
-	log.Debug("got event: %v", event)
+	log.Debug("got event: ", event)
 
 	cfg := conf.NewConfig()
 
 	p := parsers.Elb{Records: event.Records, Config: cfg}
 
-	log.Debug("transmitting logs")
+	log.Debug("encoding and transmitting logs")
 	oks := net.LogstashConsumer(p.GetChunks(), cfg)
 
 	return NewResponse(int(oks), p.LineCount)

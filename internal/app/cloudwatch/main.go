@@ -14,6 +14,8 @@ Required environment variables:
 Optional environment variables:
   LOG_LEVEL:
     Minimum log level for this function's logging.
+  DELIMITER:
+    Delimiter character to use between records when encoding.
 */
 package main
 

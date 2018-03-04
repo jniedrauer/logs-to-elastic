@@ -56,9 +56,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 	for _, r := range e.Records {
 		e.BufferFile, err = ioutil.TempFile("", "s3logs")
 		if err != nil {
-			e.BufferFile.Close()
-			os.Remove(e.BufferFile.Name())
-			log.Fatalf(err.Error())
+			closeAndDie(e.BufferFile, err)
 		}
 
 		err = awsapi.GetFromS3(e.BufferFile, &r.S3, e.Config.AwsRegion)
@@ -75,7 +73,9 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 				log.Debug("encoding chunk from offset: ", e.ReaderOffset)
 				payload, perr := GetEncodedChunk(start, end, e.Config.Delimiter, e.GetChunk)
 				if perr != nil {
-					log.Error(err.Error())
+					log.Error(perr.Error())
+					wg.Done()
+					return
 				}
 				out <- &EncodedChunk{
 					Payload: payload,
@@ -107,6 +107,9 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 // Return a slice of logs with logstash keys
 func (e *Elb) GetChunk(start int, end int) ([]interface{}, error) {
 	lc := int(end - start)
+
+	log.Debug("reading lines ", start, "-", end, " at offset ", e.ReaderOffset)
+
 	lines, offset, err := GetLines(e.ReaderOffset, lc, e.BufferFile)
 	if err != nil {
 		return make([]interface{}, 0), err

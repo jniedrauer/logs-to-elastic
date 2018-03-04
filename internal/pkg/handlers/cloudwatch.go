@@ -10,7 +10,7 @@ import (
 )
 
 func CloudwatchHandler(event *events.CloudwatchLogsEvent) (Response, error) {
-	log.Debug("got event: %v", event)
+	log.Debug("got event: ", event)
 
 	cfg := conf.NewConfig()
 
@@ -22,7 +22,7 @@ func CloudwatchHandler(event *events.CloudwatchLogsEvent) (Response, error) {
 
 	p := parsers.Cloudwatch{&d, cfg}
 
-	log.Debug("transmitting logs")
+	log.Debug("encoding and transmitting logs")
 	oks := net.LogstashConsumer(p.GetChunks(), cfg)
 
 	return NewResponse(int(oks), len(d.LogEvents))

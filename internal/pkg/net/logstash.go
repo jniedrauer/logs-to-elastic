@@ -20,11 +20,14 @@ var once sync.Once
 // Get an HTTP client using a singleton model
 func GetClient() *http.Client {
 	once.Do(func() {
+		log.Debug("generating a new HTTP client")
+
 		tr := &http.Transport{
 			MaxIdleConns:       10,
 			IdleConnTimeout:    30 * time.Second,
 			DisableCompression: true,
 		}
+
 		client = &http.Client{
 			Transport: tr,
 			Timeout:   5 * time.Second,
