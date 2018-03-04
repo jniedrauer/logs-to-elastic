@@ -15,9 +15,9 @@ TARGETS = cloudwatch elb
 BINARIES = $(addprefix $(BUILDDIR)/, $(TARGETS))
 OUTPUTS = $(addsuffix .zip, $(BINARIES))
 
-all: deps test build
+all: test build
 
-build: $(BINARIES) $(OUTPUTS)
+build: $(BINARIES) $(OUTPUTS) deps
 
 $(BUILDDIR)/%.zip: $(BUILDDIR)/%
 	cd $(BUILDDIR) && zip $(notdir $@) $(notdir $<)
@@ -25,7 +25,7 @@ $(BUILDDIR)/%.zip: $(BUILDDIR)/%
 $(BUILDDIR)/%: $(APPDIR)/%/main.go
 	$(GOBUILD) $(BUILDFLAGS) -o $@ $<
 
-test:
+test: deps
 	$(GOTEST) -v ./...
 
 clean:
