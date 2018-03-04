@@ -1,13 +1,11 @@
 package parsers
 
 import (
-	"bytes"
 	"errors"
-	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,88 +59,43 @@ func TestChunk(t *testing.T) {
 	}
 }
 
-func TestGetEncodedChunk(t *testing.T) {
-	tests := []struct {
-		data   events.CloudwatchLogsData
-		delim  []byte
-		err    error
-		expect []byte
-	}{
-		// newline delimiter
-		{
-			data: events.CloudwatchLogsData{
-				LogGroup: "g",
-				LogEvents: []events.CloudwatchLogsLogEvent{
-					{Timestamp: 0, Message: "m1"},
-					{Timestamp: 0, Message: "m2"},
-				},
-			},
-			delim: []byte("\n"),
-			expect: []byte(
-				"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}" +
-					"\n" +
-					"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}",
-			),
-		},
-		// comma delimiter
-		{
-			data: events.CloudwatchLogsData{
-				LogGroup: "g",
-				LogEvents: []events.CloudwatchLogsLogEvent{
-					{Timestamp: 0, Message: "m1"},
-					{Timestamp: 0, Message: "m2"},
-				},
-			},
-			delim: []byte(","),
-			expect: []byte(
-				"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}" +
-					"," +
-					"{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}",
-			),
-		},
-	}
-
-	for _, test := range tests {
-		c := Cloudwatch{Data: &test.data, Config: &conf.Config{IndexName: "index", Delimiter: test.delim}}
-
-		result, err := GetEncodedChunk(0, 2, c.Config.Delimiter, c.GetChunk)
-
-		assert.IsType(t, test.err, err)
-		assert.Equal(t, string(test.expect), string(result))
-	}
-}
-
 func TestLineCount(t *testing.T) {
 	tests := []struct {
-		data   io.Reader
+		data   []byte
 		err    error
 		expect int
 	}{
 		// Single line
 		{
-			data:   bytes.NewReader([]byte("test\n")),
+			data:   []byte("test\n"),
 			err:    nil,
 			expect: 1,
 		},
 		// No newline
 		{
-			data:   bytes.NewReader([]byte("test")),
+			data:   []byte("test"),
 			err:    errors.New(""),
 			expect: 1,
 		},
 		// Multiple lines
 		{
-			data:   bytes.NewReader([]byte("test1\ntest2\ntest3\n")),
+			data:   []byte("test1\ntest2\ntest3\n"),
 			err:    nil,
 			expect: 3,
 		},
 	}
 
 	for _, test := range tests {
-		result, err := LineCount(test.data)
+		file, _ := ioutil.TempFile("", ".LogsToElasticTest")
+		file.Write(test.data)
+		file.Close()
+
+		result, err := LineCount(file.Name())
 
 		assert.IsType(t, test.err, err)
 		assert.Equal(t, test.expect, result)
+
+		os.Remove(file.Name())
 	}
 }
 
@@ -150,7 +103,7 @@ func TestGetLines(t *testing.T) {
 	tests := []struct {
 		start        int64
 		lines        int
-		data         io.ReadSeeker
+		data         []byte
 		err          error
 		expectData   [][]byte
 		expectOffset int64
@@ -159,7 +112,7 @@ func TestGetLines(t *testing.T) {
 		{
 			start:        0,
 			lines:        1,
-			data:         bytes.NewReader([]byte("test\n")),
+			data:         []byte("test\n"),
 			err:          nil,
 			expectData:   [][]byte{[]byte("test")},
 			expectOffset: int64(len([]byte("test\n"))),
@@ -168,7 +121,7 @@ func TestGetLines(t *testing.T) {
 		{
 			start:        0,
 			lines:        2,
-			data:         bytes.NewReader([]byte("test1\ntest2\n")),
+			data:         []byte("test1\ntest2\n"),
 			err:          nil,
 			expectData:   [][]byte{[]byte("test1"), []byte("test2")},
 			expectOffset: int64(len([]byte("test1\ntest2\n"))),
@@ -177,7 +130,7 @@ func TestGetLines(t *testing.T) {
 		{
 			start:        6,
 			lines:        1,
-			data:         bytes.NewReader([]byte("test1\ntest2\ntest2\n")),
+			data:         []byte("test1\ntest2\ntest2\n"),
 			err:          nil,
 			expectData:   [][]byte{[]byte("test2")},
 			expectOffset: int64(len([]byte("test2\n"))),
@@ -186,7 +139,7 @@ func TestGetLines(t *testing.T) {
 		{
 			start:        0,
 			lines:        10,
-			data:         bytes.NewReader([]byte("test1\ntest2\n")),
+			data:         []byte("test1\ntest2\n"),
 			err:          nil,
 			expectData:   [][]byte{[]byte("test1"), []byte("test2")},
 			expectOffset: int64(len([]byte("test1\ntest2\n"))),
@@ -194,12 +147,71 @@ func TestGetLines(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, offset, err := GetLines(test.start, test.lines, test.data)
+		file, _ := ioutil.TempFile("", ".LogsToElasticTest")
+		file.Write(test.data)
+		file.Close()
+
+		result, offset, err := GetLines(test.start, test.lines, file.Name())
 
 		assert.IsType(t, test.err, err)
 		for i, v := range test.expectData {
 			assert.Equal(t, string(v), string(result[i]))
 		}
 		assert.Equal(t, test.expectOffset, offset)
+
+		os.Remove(file.Name())
+	}
+}
+
+type mockEncode struct {
+	TestString string `json:"test_string"`
+	TestInt    int    `json:"test_int"`
+}
+
+func TestGetEncodedChunk(t *testing.T) {
+	tests := []struct {
+		data   []mockEncode
+		delim  []byte
+		err    error
+		expect []byte
+	}{
+		// Single record
+		{
+			data:   []mockEncode{mockEncode{TestString: "ts", TestInt: 1}},
+			delim:  []byte("\n"),
+			err:    nil,
+			expect: []byte("{\"test_string\":\"ts\",\"test_int\":1}"),
+		},
+		// Multirecord, newline delimiter
+		{
+			data: []mockEncode{
+				mockEncode{TestString: "ts1", TestInt: 1},
+				mockEncode{TestString: "ts2", TestInt: 2}},
+			delim:  []byte("\n"),
+			err:    nil,
+			expect: []byte("{\"test_string\":\"ts1\",\"test_int\":1}\n{\"test_string\":\"ts2\",\"test_int\":2}"),
+		},
+		// Multirecord, comma delimiter
+		{
+			data: []mockEncode{
+				mockEncode{TestString: "ts1", TestInt: 1},
+				mockEncode{TestString: "ts2", TestInt: 2}},
+			delim:  []byte(","),
+			err:    nil,
+			expect: []byte("{\"test_string\":\"ts1\",\"test_int\":1},{\"test_string\":\"ts2\",\"test_int\":2}"),
+		},
+	}
+
+	for _, test := range tests {
+		// Cast data as slice of interface[]
+		data := make([]interface{}, len(test.data))
+		for i, v := range test.data {
+			data[i] = v
+		}
+
+		result, err := GetEncodedChunk(data, test.delim)
+
+		assert.IsType(t, test.err, err)
+		assert.Equal(t, string(test.expect), string(result))
 	}
 }
