@@ -29,13 +29,8 @@ func Chunk(chunkSize int, length int, f func(int, int)) {
 }
 
 // Return an encoded chunk of logs
-func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) ([]interface{}, error)) ([]byte, error) {
+func GetEncodedChunk(chunk []interface{}, delim []byte) ([]byte, error) {
 	var enc []byte
-
-	chunk, err := f(start, end)
-	if err != nil {
-		return make([]byte, 0), err
-	}
 
 	for _, v := range chunk {
 		j, err := json.Marshal(v)
@@ -53,16 +48,16 @@ func GetEncodedChunk(start int, end int, delim []byte, f func(int, int) ([]inter
 	return enc, nil
 }
 
-// Get number of newlines in a Reader
-func LineCount(r *os.File) (int, error) {
+// Get number of newlines in a file
+func LineCount(fileName string) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0
 	lineSep := []byte{'\n'}
 
-	file, err := os.Open(r.Name())
+	file, err := os.Open(fileName)
 	defer file.Close()
 	if err != nil {
-		closeAndDie(file, err)
+		return count, err
 	}
 
 	for {
@@ -84,18 +79,17 @@ func LineCount(r *os.File) (int, error) {
 }
 
 // Get a number of lines starting at a byte offset
-func GetLines(start int64, lines int, data *os.File) ([][]byte, int64, error) {
+func GetLines(start int64, lines int, fileName string) ([][]byte, int64, error) {
 	var output [][]byte
 
-	file, err := os.Open(data.Name())
+	file, err := os.Open(fileName)
 	defer file.Close()
-
 	if err != nil {
-		closeAndDie(file, err)
+		return output, start, err
 	}
 
 	if _, err := file.Seek(start, io.SeekStart); err != nil {
-		return make([][]byte, 0), 1, err
+		return output, start, err
 	}
 
 	log.Debug("generating a scanner")
@@ -118,11 +112,4 @@ func GetLines(start int64, lines int, data *os.File) ([][]byte, int64, error) {
 	}
 
 	return output, offset, nil
-}
-
-// Close file, delete, and panic
-func closeAndDie(file *os.File, err error) {
-	file.Close()
-	os.Remove(file.Name())
-	log.Fatalf(err.Error())
 }

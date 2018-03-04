@@ -3,7 +3,6 @@ package parsers
 import (
 	"bytes"
 	"encoding/csv"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -40,81 +39,94 @@ type ElbLog struct {
 
 // An ELB log parser
 type Elb struct {
-	Records      []events.S3EventRecord
-	Config       *conf.Config
-	BufferFile   *os.File
-	ReaderOffset int64
-	LineCount    int
+	Records   []events.S3EventRecord
+	Config    *conf.Config
+	LineCount int
 }
 
 func (e *Elb) GetChunks() <-chan *EncodedChunk {
-	e.ReaderOffset = 0 // Start from the beginning of the data
-	var err error
 	var wg sync.WaitGroup
-	out := make(chan *EncodedChunk, 10)
+	out := make(chan *EncodedChunk, 10) // Buffer up to 10 records before transmitting
 
 	for _, r := range e.Records {
-		e.BufferFile, err = ioutil.TempFile("", "s3logs")
+		err := e.ParseRecord(&r, wg, out)
 		if err != nil {
-			closeAndDie(e.BufferFile, err)
+			log.Error(err.Error())
+			continue
 		}
-
-		err = awsapi.GetFromS3(e.BufferFile, &r.S3, e.Config.AwsRegion)
-
-		lc, lcerr := LineCount(e.BufferFile)
-		if lcerr != nil {
-			log.Error("line count may be incorrect")
-		}
-		e.LineCount += lc
-
-		Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
-			wg.Add(1)
-			go func(start int, end int) {
-				log.Debug("encoding chunk from offset: ", e.ReaderOffset)
-				payload, perr := GetEncodedChunk(start, end, e.Config.Delimiter, e.GetChunk)
-				if perr != nil {
-					log.Error(perr.Error())
-					wg.Done()
-					return
-				}
-				out <- &EncodedChunk{
-					Payload: payload,
-					Records: uint32(end - start),
-				}
-				wg.Done()
-			}(start, end)
-		})
-
-		cerr := e.BufferFile.Close()
-		os.Remove(e.BufferFile.Name())
-		if err == nil {
-			err = cerr
-		}
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
 	}
-
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
 
 	return out
 }
 
+// Handle a single record
+func (e *Elb) ParseRecord(record *events.S3EventRecord, wg sync.WaitGroup, out chan<- *EncodedChunk) error {
+	// Get the log file from S3
+	rOffset := int64(0) // Reader offset for file
+	fileName, err := awsapi.GetFromS3(&record.S3, e.Config.AwsRegion)
+	log.Debug("download complete")
+	if err != nil {
+		os.Remove(fileName)
+		return err
+	}
+
+	// Count number of lines in the file
+	log.Debug("counting lines in file")
+	lc, err := LineCount(fileName)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	e.LineCount += lc
+	log.Debug("found lines: ", e.LineCount)
+
+	Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
+		wg.Add(1)
+		log.Debug("start: ", start, ", end: ", end)
+		go func(start int, end int, fileName string, rOffset *int64) {
+			log.Debug("encoding chunk from offset: ", rOffset)
+
+			data, err := e.GetChunk(start, end, fileName, rOffset)
+			if err != nil {
+				wg.Done()
+				log.Error(err.Error())
+				return
+			}
+
+			payload, err := GetEncodedChunk(data, e.Config.Delimiter)
+			if err != nil {
+				wg.Done()
+				log.Error(err.Error())
+				return
+			}
+
+			out <- &EncodedChunk{
+				Payload: payload,
+				Records: uint32(end - start),
+			}
+
+			wg.Done()
+		}(start, end, fileName, &rOffset)
+	})
+
+	go func() {
+		wg.Wait()
+		os.Remove(fileName)
+	}()
+
+	return err
+}
+
 // Return a slice of logs with logstash keys
-func (e *Elb) GetChunk(start int, end int) ([]interface{}, error) {
+func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]interface{}, error) {
 	lc := int(end - start)
 
-	log.Debug("reading lines ", start, "-", end, " at offset ", e.ReaderOffset)
+	log.Debug("reading lines ", start, "-", end, " at offset ", rOffset)
 
-	lines, offset, err := GetLines(e.ReaderOffset, lc, e.BufferFile)
+	lines, offset, err := GetLines(*rOffset, lc, fileName)
 	if err != nil {
 		return make([]interface{}, 0), err
 	}
-	atomic.AddInt64(&e.ReaderOffset, offset)
+	atomic.AddInt64(rOffset, offset)
 
 	l := make([]interface{}, lc)
 	for i, v := range lines {

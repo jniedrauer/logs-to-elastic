@@ -2,7 +2,7 @@
 package awsapi
 
 import (
-	"os"
+	"io/ioutil"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,25 +11,28 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func GetFromS3(file *os.File, s3Metadata *events.S3Entity, awsRegion string) error {
+// Create a temp file and download an S3 key to it
+func GetFromS3(s3Metadata *events.S3Entity, awsRegion string) (string, error) {
+	file, err := ioutil.TempFile("", "s3logs")
+	defer file.Close()
+	if err != nil {
+		return file.Name(), err
+	}
+
 	s, err := GetSession(awsRegion)
 	if err != nil {
-		log.Error(err.Error())
-		return err
+		return file.Name(), err
 	}
+
 	downloader := s3manager.NewDownloader(s)
 
 	log.Debug("downloading file: s3://", s3Metadata.Bucket.Name, "/", s3Metadata.Object.Key)
+
 	_, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(s3Metadata.Bucket.Name),
 			Key:    aws.String(s3Metadata.Object.Key),
 		})
-	if err != nil {
-		return err
-	}
 
-	file.Close() // AWS does this anyway, but let's make it explicit
-
-	return nil
+	return file.Name(), err
 }

@@ -33,9 +33,19 @@ func (c *Cloudwatch) GetChunks() <-chan *EncodedChunk {
 		wg.Add(1)
 		go func(start int, end int) {
 			log.Debug(fmt.Sprintf("encoding chunk %d-%d", start, end))
-			payload, err := GetEncodedChunk(start, end, c.Config.Delimiter, c.GetChunk)
+
+			data, err := c.GetChunk(start, end)
 			if err != nil {
+				wg.Done()
 				log.Error(err.Error())
+				return
+			}
+
+			payload, err := GetEncodedChunk(data, c.Config.Delimiter)
+			if err != nil {
+				wg.Done()
+				log.Error(err.Error())
+				return
 			}
 
 			out <- &EncodedChunk{
