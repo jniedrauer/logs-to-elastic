@@ -1,7 +1,6 @@
 package parsers
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -87,7 +86,6 @@ func TestElbGetChunk(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fmt.Println(test)
 		e := test.elb
 		e.BufferFile, _ = ioutil.TempFile("", ".LogsToElasticTest")
 
