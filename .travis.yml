@@ -3,11 +3,8 @@ language: go
 go:
   - "1.10.x"
 
-before_deploy:
-  - cd internal/app/cloudwatch
-  - zip cloudwatch_logs.zip main
-  - cd internal/app/elb
-  - zip elb_logs.zip main
+before_install:
+  - go get -u github.com/golang/dep/cmd/dep
 
 deploy:
   provider: releases

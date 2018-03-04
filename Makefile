@@ -5,7 +5,8 @@ GOCMD = go
 GOBUILD = $(GOCMD) build
 GOCLEAN = $(GOCMD) clean
 GOTEST = $(GOCMD) test
-GOGET = $(GOCMD) get
+DEP = dep
+DEPENSURE = $(DEP) ensure
 
 # Build config
 BUILDFLAGS = -v
@@ -33,6 +34,6 @@ clean:
 	rm -f $(BINARIES) $(OUTPUTS)
 
 deps:
-	$(GOGET) ./...
+	$(DEPENSURE) -v
 
 .PHONY: build test clean deps
