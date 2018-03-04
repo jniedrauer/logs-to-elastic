@@ -79,19 +79,31 @@ func TestPost(t *testing.T) {
 
 func TestLogstashConsumer(t *testing.T) {
 	tests := []struct {
-		input  int
-		code   int
-		expect uint32
+		input   int
+		records uint32
+		code    int
+		expect  uint32
 	}{
+		// HTTP 200, expect 3 successes
 		{
-			input:  3,
-			code:   200,
-			expect: 3,
+			input:   3,
+			records: 1,
+			code:    200,
+			expect:  3,
 		},
+		// HTTP 500, expect 0 successes
 		{
-			input:  3,
-			code:   500,
-			expect: 0,
+			input:   3,
+			records: 1,
+			code:    500,
+			expect:  0,
+		},
+		// Multiple records per transmission
+		{
+			input:   10,
+			records: 3,
+			code:    200,
+			expect:  30,
 		},
 	}
 
@@ -111,13 +123,13 @@ func TestLogstashConsumer(t *testing.T) {
 		out := make(chan *parsers.EncodedChunk, 10)
 		go func() {
 			for i := 0; i < test.input; i++ {
-				out <- &parsers.EncodedChunk{Payload: []byte("f"), Records: 1}
+				out <- &parsers.EncodedChunk{Payload: []byte("f"), Records: test.records}
 			}
 			close(out)
 		}()
 
 		result := LogstashConsumer(out, &cfg)
 
-		assert.Equal(t, test.expect, result)
+		assert.Equal(t, int(test.expect), int(result))
 	}
 }

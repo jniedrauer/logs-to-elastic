@@ -32,6 +32,16 @@ func TestChunk(t *testing.T) {
 			sz:     2,
 			expect: [][]int{{0, 2}, {2, 4}, {4, 5}},
 		},
+		{
+			len:    8,
+			sz:     5,
+			expect: [][]int{{0, 5}, {5, 8}},
+		},
+		{
+			len:    10,
+			sz:     3,
+			expect: [][]int{{0, 3}, {3, 6}, {6, 9}, {9, 10}},
+		},
 	}
 
 	for _, test := range tests {
@@ -42,6 +52,12 @@ func TestChunk(t *testing.T) {
 		})
 
 		assert.Equal(t, test.expect, result)
+		// All chunks except possibly the last should be the chunk size
+		for i, v := range test.expect {
+			if i+1 < len(test.expect) {
+				assert.Equal(t, v[1]-v[0], test.sz)
+			}
+		}
 	}
 }
 

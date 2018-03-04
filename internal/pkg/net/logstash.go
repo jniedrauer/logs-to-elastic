@@ -54,18 +54,18 @@ func Post(endpoint string, payload []byte, c *http.Client) bool {
 // Asynchronous POST to endpoint
 func LogstashConsumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint32 {
 	c := GetClient()
-	var oks uint32
+	var oks uint32 = 0
 	var wg sync.WaitGroup
 
 	for p := range in {
 		wg.Add(1)
-		go func() {
+		go func(p *parsers.EncodedChunk) {
 			if Post(config.Logstash, p.Payload, c) {
 				atomic.AddUint32(&oks, p.Records)
 			}
-			log.Debug("transmitted record: ", oks)
+			log.Debug(fmt.Sprintf("transmitted batch: %d, total: %d", p.Records, oks))
 			wg.Done()
-		}()
+		}(p)
 	}
 
 	wg.Wait()

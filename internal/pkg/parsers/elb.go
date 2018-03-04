@@ -71,7 +71,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 
 		Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
 			wg.Add(1)
-			go func() {
+			go func(start int, end int) {
 				log.Debug("encoding chunk from offset: ", e.ReaderOffset)
 				payload, perr := GetEncodedChunk(start, end, e.Config.Delimiter, e.GetChunk)
 				if perr != nil {
@@ -82,7 +82,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 					Records: uint32(end - start),
 				}
 				wg.Done()
-			}()
+			}(start, end)
 		})
 
 		cerr := e.BufferFile.Close()
