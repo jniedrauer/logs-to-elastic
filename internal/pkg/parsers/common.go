@@ -80,7 +80,7 @@ func LineCount(r io.Reader) (int, error) {
 func GetLines(start int64, lines int, data io.ReadSeeker) ([][]byte, int64, error) {
 	var output [][]byte
 
-	if _, err := data.Seek(start, 0); err != nil {
+	if _, err := data.Seek(start, io.SeekStart); err != nil {
 		return [][]byte{}, 1, err
 	}
 

@@ -57,6 +57,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 		e.BufferFile, err = ioutil.TempFile("", "s3logs")
 		if err != nil {
 			e.BufferFile.Close()
+			os.Remove(e.BufferFile.Name())
 			log.Fatalf(err.Error())
 		}
 
@@ -85,6 +86,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 		})
 
 		cerr := e.BufferFile.Close()
+		os.Remove(e.BufferFile.Name())
 		if err == nil {
 			err = cerr
 		}
@@ -120,13 +122,12 @@ func (e *Elb) GetChunk(start int, end int) ([]interface{}, error) {
 		}
 		request := strings.Fields(split[11])
 		method := request[0]
-		url := request[1][strings.LastIndex(request[1], "/")-1 : len(request[1])]
-		agent := request[2]
+		url := request[1][strings.LastIndex(request[1], "/"):len(request[1])]
 
 		l[i] = ElbLog{
 			IndexName:    e.Config.IndexName,
 			Timestamp:    split[0],
-			Message:      strings.Join(split[1:], " "),
+			Message:      strings.SplitN(string(v[:]), " ", 2)[1],
 			Name:         split[1],
 			ClientIp:     strings.Split(split[2], ":")[0],
 			BackendIp:    strings.Split(split[3], ":")[0],
@@ -139,7 +140,7 @@ func (e *Elb) GetChunk(start int, end int) ([]interface{}, error) {
 			Sent:         split[10],
 			Method:       method,
 			Url:          url,
-			Agent:        agent,
+			Agent:        split[12],
 			Cipher:       split[13],
 			Protocol:     split[14],
 		}
