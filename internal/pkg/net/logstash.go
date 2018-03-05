@@ -38,7 +38,7 @@ func GetClient() *http.Client {
 
 // Send a post request and only return HTTP status code pass/fail
 func Post(endpoint string, payload []byte, c *http.Client) bool {
-	resp, err := c.Post(endpoint, "application/json", bytes.NewReader(payload))
+	resp, err := c.Post(endpoint, "text/plain", bytes.NewReader(payload))
 	if err != nil {
 		log.Error(err.Error())
 		return false
