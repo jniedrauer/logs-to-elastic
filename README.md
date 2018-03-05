@@ -18,12 +18,12 @@ Default make target will download dependencies, run unit tests, and compile.
 ## Use
 The binary artifacts are designed for use in AWS Lambda.
 
-###Cloudwatch Logs
+### Cloudwatch Logs
 Set Cloudwatch log groups as a trigger for a Lambda function with the
 artifact `cloudwatch.zip`. Every time the function triggers, the logs will
 be split into keys, JSON encoded, and POSTed to the configured endpoint.
 
-###ELB Logs
+### ELB Logs
 Set ELBs to ship access logs to S3. Then set the S3 bucket PUT as a trigger
 for the Lambda function with a artifact `elb.zip`. The logs will be downloaded
 from S3, split into keys, JSON encoded, and POSTed to the configured endpoint.
@@ -31,7 +31,7 @@ from S3, split into keys, JSON encoded, and POSTed to the configured endpoint.
 Note that encoding and transmission will occur in an indeterminte order and
 with unlimited concurrency.
 
-###Required environment variables
+### Required environment variables
 - `CHUNK_SIZE`
 
   Number of logs to transmit in a single request.
@@ -45,7 +45,7 @@ with unlimited concurrency.
 
   HTTP endpoint to send logs to.
 
-###Optional environment variables
+### Optional environment variables
 - `LOG_LEVEL`
 
   Minimum log level for this function's logging.
