@@ -67,7 +67,7 @@ func (c *Cloudwatch) GetChunk(start int, end int) ([]interface{}, error) {
 	l := make([]interface{}, end-start)
 	for i, v := range c.Data.LogEvents[start:end] {
 		l[i] = CloudwatchLog{
-			Timestamp: unixToIso8601(v.Timestamp),
+			Timestamp: unixToRfc3339(v.Timestamp),
 			Message:   v.Message,
 			LogGroup:  c.Data.LogGroup,
 			IndexName: c.Config.IndexName,
@@ -77,7 +77,7 @@ func (c *Cloudwatch) GetChunk(start int, end int) ([]interface{}, error) {
 	return l, nil
 }
 
-// Convert a unix timestamp to ISO 8601 format
-func unixToIso8601(unix int64) string {
-	return time.Unix(unix, 0).UTC().Format("2006-01-02T15:04:05-0000")
+// Convert a unix (millisecond) timestamp to RFC3339 format
+func unixToRfc3339(unix int64) string {
+	return time.Unix(0, unix*int64(time.Millisecond)).UTC().Format(time.RFC3339Nano)
 }

@@ -29,7 +29,7 @@ func TestGetChunk(t *testing.T) {
 			},
 			err: nil,
 			expect: []CloudwatchLog{
-				{Timestamp: "1970-01-01T00:00:00-0000", Message: "m", LogGroup: "g", IndexName: "i"},
+				{Timestamp: "1970-01-01T00:00:00Z", Message: "m", LogGroup: "g", IndexName: "i"},
 			},
 		},
 		// Multiple event slice
@@ -42,14 +42,14 @@ func TestGetChunk(t *testing.T) {
 				LogEvents: []events.CloudwatchLogsLogEvent{
 					{Timestamp: 0, Message: "m0"},
 					{Timestamp: 0, Message: "m1"},
-					{Timestamp: 1519700693, Message: "m2"},
+					{Timestamp: 1519700693000, Message: "m2"},
 					{Timestamp: 0, Message: "m3"},
 				},
 			},
 			err: nil,
 			expect: []CloudwatchLog{
-				{Timestamp: "1970-01-01T00:00:00-0000", Message: "m1", LogGroup: "g", IndexName: "i"},
-				{Timestamp: "2018-02-27T03:04:53-0000", Message: "m2", LogGroup: "g", IndexName: "i"},
+				{Timestamp: "1970-01-01T00:00:00Z", Message: "m1", LogGroup: "g", IndexName: "i"},
+				{Timestamp: "2018-02-27T03:04:53Z", Message: "m2", LogGroup: "g", IndexName: "i"},
 			},
 		},
 	}
@@ -87,8 +87,8 @@ func TestGetChunks(t *testing.T) {
 			chunkSize:   1,
 			expectCount: 2,
 			expect: [][]byte{
-				[]byte("{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
-				[]byte("{\"timestamp\":\"1970-01-01T00:00:00-0000\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
+				[]byte("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
+				[]byte("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
 			},
 		},
 		// Test mismatched chunks and records to verify that count is correct
@@ -134,5 +134,27 @@ func TestGetChunks(t *testing.T) {
 			assert.Equal(t, 0, len(unmatched))
 		}
 		assert.Equal(t, int(test.expectCount), int(resultCount))
+	}
+}
+
+func TestUnixToRfc3339(t *testing.T) {
+	tests := []struct {
+		unix   int64
+		expect string
+	}{
+		{
+			unix:   0,
+			expect: "1970-01-01T00:00:00Z",
+		},
+		{
+			unix:   1520270504080,
+			expect: "2018-03-05T17:21:44.08Z",
+		},
+	}
+
+	for _, test := range tests {
+		result := unixToRfc3339(test.unix)
+
+		assert.Equal(t, test.expect, result)
 	}
 }
