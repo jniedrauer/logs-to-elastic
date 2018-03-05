@@ -18,7 +18,7 @@ OUTPUTS = $(addsuffix .zip, $(BINARIES))
 
 all: test build
 
-build: $(BINARIES) $(OUTPUTS) deps
+build: deps $(BINARIES) $(OUTPUTS)
 
 $(BUILDDIR)/%.zip: $(BUILDDIR)/%
 	cd $(BUILDDIR) && zip $(notdir $@) $(notdir $<)
