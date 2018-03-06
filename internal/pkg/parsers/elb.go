@@ -68,7 +68,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 func (e *Elb) ParseRecord(record *events.S3EventRecord, wg *sync.WaitGroup, out chan<- *EncodedChunk) error {
 	// Get the log file from S3
 	rOffset := int64(0) // Reader offset for file
-	fileName, err := awsapi.GetFromS3(&record.S3, e.Config.AwsRegion)
+	fileName, err := awsapi.GetFromS3(&record.S3)
 	if err != nil {
 		os.Remove(fileName)
 		return err

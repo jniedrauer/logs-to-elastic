@@ -2,31 +2,17 @@
 package awsapi
 
 import (
-	"sync"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	log "github.com/sirupsen/logrus"
 )
 
 var defaultRegion string = "us-east-1"
-var sess *session.Session
-var sessErr error
-var once sync.Once
+var sess, err = session.NewSession(&aws.Config{
+	Region: aws.String(defaultRegion)},
+)
 
-// Return an AWS session, creating one if required
-func GetSession(region string) (*session.Session, error) {
-	once.Do(func() {
-		sess, sessErr = getNewSession(region)
-	})
-
-	return sess, sessErr
-}
-
-// Create a new AWS session to region
-func getNewSession(region string) (*session.Session, error) {
-	log.Debug("creating a new session in region: ", region)
-	return session.NewSession(&aws.Config{
-		Region: aws.String(region)},
-	)
+// Return an AWS session using a global variable to cache connections in
+// between invocations
+func Session() (*session.Session, error) {
+	return sess, err
 }

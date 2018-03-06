@@ -13,26 +13,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var client *http.Client
-var once sync.Once
+var client *http.Client = &http.Client{
+	Transport: &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: true,
+	},
+	Timeout: 5 * time.Second,
+}
 
-// Get an HTTP client using a singleton model
-func GetClient() *http.Client {
-	once.Do(func() {
-		log.Debug("generating a new HTTP client")
-
-		tr := &http.Transport{
-			MaxIdleConns:       10,
-			IdleConnTimeout:    30 * time.Second,
-			DisableCompression: true,
-		}
-
-		client = &http.Client{
-			Transport: tr,
-			Timeout:   5 * time.Second,
-		}
-	})
-
+// Get an HTTP client using a global variable to cache session between
+// invokcations
+func Client() *http.Client {
 	return client
 }
 
@@ -56,7 +48,7 @@ func Post(endpoint string, payload []byte, c *http.Client) bool {
 
 // Asynchronous POST to endpoint
 func LogstashConsumer(in <-chan *parsers.EncodedChunk, config *conf.Config) uint32 {
-	c := GetClient()
+	c := Client()
 	var oks uint32 = 0
 	var wg sync.WaitGroup
 

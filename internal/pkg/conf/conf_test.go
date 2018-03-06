@@ -17,13 +17,11 @@ func TestInit(t *testing.T) {
 		expect Config
 	}{
 		{
-			aenv:  "us-west-2",
 			denv:  ",",
 			ienv:  "indexname",
 			lenv:  "logstash",
 			csenv: "100",
 			expect: Config{
-				AwsRegion: "us-west-2",
 				Delimiter: []byte(","),
 				IndexName: "indexname",
 				Logstash:  "logstash",
@@ -33,7 +31,6 @@ func TestInit(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		os.Setenv("AWS_REGION", test.aenv)
 		os.Setenv("DELIMITER", test.denv)
 		os.Setenv("INDEXNAME", test.ienv)
 		os.Setenv("LOGSTASH", test.lenv)

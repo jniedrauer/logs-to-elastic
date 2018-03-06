@@ -7,12 +7,10 @@ import (
 	"strconv"
 )
 
-var defaultRegion string = "us-east-1"
 var defaultDelimiter string = "\n"
 
 // Stores configuration state
 type Config struct {
-	AwsRegion string
 	ChunkSize int
 	Delimiter []byte
 	IndexName string
@@ -21,7 +19,6 @@ type Config struct {
 
 // Populate configuration state
 func NewConfig() *Config {
-	a := GetEnvOrDefault("AWS_REGION", defaultRegion)
 	d := []byte(GetEnvOrDefault("DELIMITER", defaultDelimiter))
 	i := GetEnvOrFatal("INDEXNAME")
 	l := GetEnvOrFatal("LOGSTASH")
@@ -32,7 +29,7 @@ func NewConfig() *Config {
 	}
 	cs := int(c64)
 
-	return &Config{AwsRegion: a, Delimiter: d, IndexName: i, Logstash: l, ChunkSize: cs}
+	return &Config{Delimiter: d, IndexName: i, Logstash: l, ChunkSize: cs}
 }
 
 // Get environment variable or return default if unset

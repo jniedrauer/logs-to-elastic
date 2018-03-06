@@ -12,14 +12,14 @@ import (
 )
 
 // Create a temp file and download an S3 key to it
-func GetFromS3(s3Metadata *events.S3Entity, awsRegion string) (string, error) {
+func GetFromS3(s3Metadata *events.S3Entity) (string, error) {
 	file, err := ioutil.TempFile("", "s3logs")
 	defer file.Close()
 	if err != nil {
 		return file.Name(), err
 	}
 
-	s, err := GetSession(awsRegion)
+	s, err := Session()
 	if err != nil {
 		return file.Name(), err
 	}
