@@ -78,6 +78,7 @@ func TestElbGetChunk(t *testing.T) {
 				Recieved:     "0",
 				Sent:         "57",
 				Method:       "GET",
+				DomainName:   "www.example.com:443",
 				Url:          "/",
 				Agent:        "curl/7.38.0",
 				Cipher:       "DHE-RSA-AES128-SHA",

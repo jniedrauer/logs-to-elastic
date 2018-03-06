@@ -3,6 +3,7 @@ package parsers
 import (
 	"bytes"
 	"encoding/csv"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ type ElbLog struct {
 	Recieved     string `json:"recieved_bytes"`
 	Sent         string `json:"sent_bytes"`
 	Method       string `json:"method"`
+	DomainName   string `json:"domain_name"`
 	Url          string `json:"url"`
 	Agent        string `json:"user_agent"`
 	Cipher       string `json:"ssl_cipher"`
@@ -135,7 +137,9 @@ func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]i
 		}
 		request := strings.Fields(split[11])
 		method := request[0]
-		url := request[1][strings.LastIndex(request[1], "/"):len(request[1])]
+		u, _ := url.Parse(request[1])
+		domain := u.Host
+		url := u.Path
 
 		l[i] = ElbLog{
 			IndexName:    e.Config.IndexName,
@@ -152,6 +156,7 @@ func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]i
 			Recieved:     split[9],
 			Sent:         split[10],
 			Method:       method,
+			DomainName:   domain,
 			Url:          url,
 			Agent:        split[12],
 			Cipher:       split[13],
