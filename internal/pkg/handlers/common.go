@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Lambda function return
@@ -25,8 +27,10 @@ func NewResponse(oks int, total int) (Response, error) {
 		ok = false
 	}
 
+	msg := fmt.Sprintf("sent records: %d", oks)
+	log.Info(msg)
 	return Response{
-		Message: fmt.Sprintf("sent records: %d", oks),
+		Message: msg,
 		Ok:      ok,
 	}, err
 }
