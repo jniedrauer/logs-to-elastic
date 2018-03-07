@@ -15,6 +15,24 @@ go get -u github.com/golang/dep/cmd/dep
 
 Default make target will download dependencies, run unit tests, and compile.
 
+### Targets
+
+- `make build`
+
+   Install dependencies and compile.
+
+- `make test`
+
+   Install dependencies and run tests.
+
+- `make clean`
+
+   Clean up artifacts.
+
+- `make deps`
+
+   Install dependencies.
+
 ## Use
 The binary artifacts are designed for use in AWS Lambda.
 
@@ -34,22 +52,22 @@ with unlimited concurrency.
 ### Required environment variables
 - `CHUNK_SIZE`
 
-  Number of logs to transmit in a single request.
+   Number of logs to transmit in a single request.
 
 - `INDEXNAME`
 
-  This will be passed as a json parameter `indexname`, to be used by the
-  Logstash listener.
+   This will be passed as a json parameter `indexname`, to be used by the
+   Logstash listener.
 
 - `LOGSTASH`
 
-  HTTP endpoint to send logs to.
+   HTTP endpoint to send logs to.
 
 ### Optional environment variables
 - `LOG_LEVEL`
 
-  Minimum log level for this function's logging.
+   Minimum log level for this function's logging.
 
 - `DELIMITER`
 
-  Delimiter character to use between records when encoding.
+   Delimiter character to use between records when encoding.
