@@ -11,7 +11,7 @@ DEPENSURE = $(DEP) ensure
 # Build config
 BUILDFLAGS = -v
 BUILDDIR = build
-APPDIR = internal/app
+APPDIR = cmd
 TARGETS = cloudwatch elb
 BINARIES = $(addprefix $(BUILDDIR)/, $(TARGETS))
 OUTPUTS = $(addsuffix .zip, $(BINARIES))
