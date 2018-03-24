@@ -2,10 +2,12 @@
 package awsapi
 
 import (
+	"io"
 	"io/ioutil"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,4 +33,17 @@ func (c *S3Client) Get(bucket string, key string) (string, error) {
 		})
 
 	return file.Name(), err
+}
+
+type MockS3Iface struct {
+	TestData []byte
+}
+
+func (c MockS3Iface) Download(w io.WriterAt, input *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (n int64, err error) {
+	w.WriteAt([]byte(c.TestData), 0)
+	return 0, nil
+}
+
+func (c MockS3Iface) DownloadWithContext(ctx aws.Context, w io.WriterAt, input *s3.GetObjectInput, options ...func(*s3manager.Downloader)) (int64, error) {
+	return 0, nil
 }

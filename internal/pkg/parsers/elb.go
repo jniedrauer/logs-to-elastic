@@ -138,6 +138,11 @@ func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]i
 			log.Error(err.Error())
 			continue
 		}
+		log.Debug("split line: ", split)
+		if len(split) < 15 {
+			log.Error("line less than 15 elements long")
+			continue
+		}
 		request := strings.Fields(split[11])
 		method := request[0]
 		u, _ := url.Parse(request[1])
