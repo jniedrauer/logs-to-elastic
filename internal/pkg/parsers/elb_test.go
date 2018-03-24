@@ -3,11 +3,22 @@ package parsers
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/awsapi"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
+	"github.com/jniedrauer/logs-to-elastic/internal/pkg/logging"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	os.Setenv("LOG_LEVEL", "DEBUG")
+	logging.Init()
+	rc := m.Run()
+	os.Exit(rc)
+}
 
 func TestSplitRecord(t *testing.T) {
 	tests := []struct {
@@ -105,5 +116,41 @@ func TestElbGetChunk(t *testing.T) {
 		assert.Equal(t, expect, result)
 
 		os.Remove(file.Name())
+	}
+}
+
+func TestElbGetChunks(t *testing.T) {
+	tests := []struct {
+		elb    *Elb
+		src    string
+		expect int
+	}{
+		{
+			elb: &Elb{
+				Records: []events.S3EventRecord{
+					events.S3EventRecord{S3: events.S3Entity{
+						Bucket: events.S3Bucket{Name: "notreal"},
+						Object: events.S3Object{Key: "notreal"},
+					}},
+				},
+				Config: &conf.Config{IndexName: "index", Delimiter: []byte("\n"), ChunkSize: 1},
+			},
+			src:    "testdata/issue_2_logs",
+			expect: 16,
+		},
+	}
+
+	for _, test := range tests {
+		data, _ := ioutil.ReadFile(test.src)
+		// This is a global variable. See also:
+		// https://docs.aws.amazon.com/lambda/latest/dg/go-programming-model-handler-types.html#go-programming-model-handler-execution-environment-reuse
+		S3Client = awsapi.S3Client{awsapi.MockS3Iface{TestData: data}}
+		i := 0
+		for v := range test.elb.GetChunks() {
+			assert.True(t, strings.HasPrefix(string(v.Payload), "{\"timestamp\""))
+			assert.True(t, strings.HasSuffix(string(v.Payload), "\"ssl_protocol\":\"TLSv1.2\"}"))
+			i += 1
+		}
+		assert.Equal(t, test.expect, i)
 	}
 }

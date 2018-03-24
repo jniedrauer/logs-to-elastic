@@ -6,15 +6,17 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/awsapi"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
 
 	log "github.com/sirupsen/logrus"
 )
+
+var S3Client = awsapi.S3Client{s3manager.NewDownloader(awsapi.Session)}
 
 // The format of an ELB log when sent to Logstash
 type ElbLog struct {
@@ -47,19 +49,17 @@ type Elb struct {
 }
 
 func (e *Elb) GetChunks() <-chan *EncodedChunk {
-	var wg sync.WaitGroup
 	out := make(chan *EncodedChunk, 10) // Buffer up to 10 records before transmitting
 
-	for _, r := range e.Records {
-		err := e.ParseRecord(&r, &wg, out)
-		if err != nil {
-			log.Error(err.Error())
-			continue
-		}
-	}
-
+	// Put records into channel syncronously but don't block
 	go func() {
-		wg.Wait()
+		for _, r := range e.Records {
+			err := e.ParseRecord(&r, out)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+		}
 		close(out)
 	}()
 
@@ -67,12 +67,13 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 }
 
 // Handle a single record
-func (e *Elb) ParseRecord(record *events.S3EventRecord, wg *sync.WaitGroup, out chan<- *EncodedChunk) error {
+func (e *Elb) ParseRecord(record *events.S3EventRecord, out chan<- *EncodedChunk) error {
 	// Get the log file from S3
 	rOffset := int64(0) // Reader offset for file
-	fileName, err := awsapi.GetFromS3(&record.S3)
+	fileName, err := S3Client.Get(record.S3.Bucket.Name, record.S3.Object.Key)
+	defer os.Remove(fileName)
+
 	if err != nil {
-		os.Remove(fileName)
 		return err
 	}
 
@@ -85,35 +86,23 @@ func (e *Elb) ParseRecord(record *events.S3EventRecord, wg *sync.WaitGroup, out 
 	log.Debug("found lines: ", e.LineCount)
 
 	Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
-		wg.Add(1)
-		go func(start int, end int, fileName string, rOffset *int64) {
-			data, err := e.GetChunk(start, end, fileName, rOffset)
-			if err != nil {
-				wg.Done()
-				log.Error(err.Error())
-				return
-			}
+		data, err := e.GetChunk(start, end, fileName, &rOffset)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
 
-			payload, err := GetEncodedChunk(data, e.Config.Delimiter)
-			if err != nil {
-				wg.Done()
-				log.Error(err.Error())
-				return
-			}
+		payload, err := GetEncodedChunk(data, e.Config.Delimiter)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
 
-			out <- &EncodedChunk{
-				Payload: payload,
-				Records: uint32(end - start),
-			}
-
-			wg.Done()
-		}(start, end, fileName, &rOffset)
+		out <- &EncodedChunk{
+			Payload: payload,
+			Records: uint32(end - start),
+		}
 	})
-
-	go func() {
-		wg.Wait()
-		os.Remove(fileName)
-	}()
 
 	return err
 }
@@ -123,16 +112,21 @@ func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]i
 	lc := int(end - start)
 
 	lines, offset, err := GetLines(atomic.LoadInt64(rOffset), lc, fileName)
+	log.Debug("old offset: ", *rOffset, " new offset: ", offset+*rOffset)
 	if err != nil {
 		return make([]interface{}, 0), err
 	}
-	atomic.AddInt64(rOffset, offset)
+	*rOffset = *rOffset + offset
 
 	l := make([]interface{}, lc)
 	for i, v := range lines {
 		split, err := splitRecord(v)
 		if err != nil {
 			log.Error(err.Error())
+			continue
+		}
+		if len(split) < 15 {
+			log.Error("line less than 15 elements long")
 			continue
 		}
 		request := strings.Fields(split[11])
