@@ -7,12 +7,6 @@ import (
 )
 
 var defaultRegion string = "us-east-1"
-var sess, err = session.NewSession(&aws.Config{
+var Session, _ = session.NewSession(&aws.Config{
 	Region: aws.String(defaultRegion)},
 )
-
-// Return an AWS session using a global variable to cache connections in
-// between invocations
-func Session() (*session.Session, error) {
-	return sess, err
-}

@@ -42,6 +42,7 @@
     "service/s3",
     "service/s3/s3iface",
     "service/s3/s3manager",
+    "service/s3/s3manager/s3manageriface",
     "service/sts"
   ]
   revision = "aace5875a5c3b85a3902c6d72b9caed301d64cce"
@@ -100,6 +101,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a0e870fc02da5e66266be9a9eed9bcb51b0e1f7a1535ae1d92776d76fbe19abb"
+  inputs-digest = "a71291b60c78e25a9ff8196dbef5a28c9e50b10db1aedeba290307e986d1a9ae"
   solver-name = "gps-cdcl"
   solver-version = 1

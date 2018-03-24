@@ -10,11 +10,14 @@ import (
 	"sync/atomic"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/awsapi"
 	"github.com/jniedrauer/logs-to-elastic/internal/pkg/conf"
 
 	log "github.com/sirupsen/logrus"
 )
+
+var S3Client = awsapi.S3Client{s3manager.NewDownloader(awsapi.Session)}
 
 // The format of an ELB log when sent to Logstash
 type ElbLog struct {
@@ -70,7 +73,7 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 func (e *Elb) ParseRecord(record *events.S3EventRecord, wg *sync.WaitGroup, out chan<- *EncodedChunk) error {
 	// Get the log file from S3
 	rOffset := int64(0) // Reader offset for file
-	fileName, err := awsapi.GetFromS3(&record.S3)
+	fileName, err := S3Client.Get(record.S3.Bucket.Name, record.S3.Object.Key)
 	if err != nil {
 		os.Remove(fileName)
 		return err
