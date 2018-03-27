@@ -138,6 +138,19 @@ func TestElbGetChunks(t *testing.T) {
 			src:    "testdata/issue_2_logs",
 			expect: 16,
 		},
+		{
+			elb: &Elb{
+				Records: []events.S3EventRecord{
+					events.S3EventRecord{S3: events.S3Entity{
+						Bucket: events.S3Bucket{Name: "notreal"},
+						Object: events.S3Object{Key: "notreal"},
+					}},
+				},
+				Config: &conf.Config{IndexName: "index", Delimiter: []byte("\n"), ChunkSize: 40},
+			},
+			src:    "testdata/issue_4_logs",
+			expect: 3,
+		},
 	}
 
 	for _, test := range tests {
