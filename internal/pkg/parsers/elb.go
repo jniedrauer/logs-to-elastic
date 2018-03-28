@@ -1,12 +1,12 @@
 package parsers
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
 	"net/url"
 	"os"
 	"strings"
-	"sync/atomic"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -69,100 +69,107 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 // Handle a single record
 func (e *Elb) ParseRecord(record *events.S3EventRecord, out chan<- *EncodedChunk) error {
 	// Get the log file from S3
-	rOffset := int64(0) // Reader offset for file
-	fileName, err := S3Client.Get(record.S3.Bucket.Name, record.S3.Object.Key)
-	defer os.Remove(fileName)
-
+	f, err := S3Client.Get(record.S3.Bucket.Name, record.S3.Object.Key)
+	defer os.Remove(f)
 	if err != nil {
 		return err
 	}
 
-	// Count number of lines in the file
-	lc, err := LineCount(fileName)
+	fh, err := os.Open(f)
 	if err != nil {
-		log.Error(err.Error())
+		return err
 	}
-	e.LineCount += lc
-	log.Debug("found lines: ", e.LineCount)
+	defer fh.Close()
 
-	Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
-		data, err := e.GetChunk(start, end, fileName, &rOffset)
-		if err != nil {
-			log.Error(err.Error())
-			return
+	scanner := bufio.NewScanner(fh)
+
+	// Scan through the file by lines, transmitting in batches
+	var chunk []interface{}
+	i := 0
+	eof := false
+	for {
+		if eof {
+			break
 		}
 
-		payload, err := GetEncodedChunk(data, e.Config.Delimiter)
-		if err != nil {
-			log.Error(err.Error())
-			return
+		if scanner.Scan() {
+			chunk = append(chunk, e.ParseRow(scanner.Bytes()))
+			i += 1
+			e.LineCount += 1
+		} else if err := scanner.Err(); err != nil {
+			return err
+		} else {
+			eof = true
 		}
 
-		out <- &EncodedChunk{
-			Payload: payload,
-			Records: uint32(end - start),
+		if i >= e.Config.ChunkSize || (eof && len(chunk) > 0) {
+			i = 0
+			payload, err := GetEncodedChunk(chunk, e.Config.Delimiter)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+
+			out <- &EncodedChunk{
+				Payload: payload,
+				Records: uint32(len(chunk)),
+			}
+
+			chunk = nil
 		}
-	})
+	}
 
 	return err
 }
 
 // Return a slice of logs with logstash keys
-func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]interface{}, error) {
-	lc := int(end - start)
+func (e *Elb) ParseRow(row []byte) interface{} {
+	var result interface{}
 
-	lines, offset, err := GetLines(atomic.LoadInt64(rOffset), lc, fileName)
-	log.Debug("old offset: ", *rOffset, " new offset: ", offset+*rOffset)
+	split, err := splitRow(row)
 	if err != nil {
-		return make([]interface{}, 0), err
+		log.Error(err.Error())
+		return result
 	}
-	*rOffset = *rOffset + offset
-
-	l := make([]interface{}, lc)
-	for i, v := range lines {
-		split, err := splitRecord(v)
-		if err != nil {
-			log.Error(err.Error())
-			continue
-		}
-		if len(split) < 15 {
-			log.Error("line less than 15 elements long")
-			continue
-		}
-		request := strings.Fields(split[11])
-		method := request[0]
-		u, _ := url.Parse(request[1])
-		domain := u.Host
-		url := u.Path
-
-		l[i] = ElbLog{
-			IndexName:    e.Config.IndexName,
-			Timestamp:    split[0],
-			Message:      strings.SplitN(string(v[:]), " ", 2)[1],
-			Name:         split[1],
-			ClientIp:     strings.Split(split[2], ":")[0],
-			BackendIp:    strings.Split(split[3], ":")[0],
-			RequestTime:  split[4],
-			BackendTime:  split[5],
-			ResponseTime: split[6],
-			Code:         split[7],
-			BackendCode:  split[8],
-			Recieved:     split[9],
-			Sent:         split[10],
-			Method:       method,
-			DomainName:   domain,
-			Url:          url,
-			Agent:        split[12],
-			Cipher:       split[13],
-			Protocol:     split[14],
-		}
+	if len(split) < 15 {
+		log.Error("line less than 15 elements long")
+		return result
 	}
 
-	return l, nil
+	request := strings.Fields(split[11])
+	method := request[0]
+	u, _ := url.Parse(request[1])
+	domain := u.Host
+	url := u.Path
+
+	parsed := ElbLog{
+		IndexName:    e.Config.IndexName,
+		Timestamp:    split[0],
+		Message:      strings.SplitN(string(row[:]), " ", 2)[1],
+		Name:         split[1],
+		ClientIp:     strings.Split(split[2], ":")[0],
+		BackendIp:    strings.Split(split[3], ":")[0],
+		RequestTime:  split[4],
+		BackendTime:  split[5],
+		ResponseTime: split[6],
+		Code:         split[7],
+		BackendCode:  split[8],
+		Recieved:     split[9],
+		Sent:         split[10],
+		Method:       method,
+		DomainName:   domain,
+		Url:          url,
+		Agent:        split[12],
+		Cipher:       split[13],
+		Protocol:     split[14],
+	}
+
+	return parsed
 }
 
 // Split an ELB record into its parts
-func splitRecord(in []byte) ([]string, error) {
+func splitRow(in []byte) ([]string, error) {
+	//log.Debug("splitting line: ", string(in))
 	r := csv.NewReader(bytes.NewReader(in))
 	r.Comma = ' '
 	return r.Read()
