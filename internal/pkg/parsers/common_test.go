@@ -1,9 +1,6 @@
 package parsers
 
 import (
-	"errors"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,110 +53,6 @@ func TestChunk(t *testing.T) {
 				assert.Equal(t, v[1]-v[0], test.sz)
 			}
 		}
-	}
-}
-
-func TestLineCount(t *testing.T) {
-	tests := []struct {
-		data   []byte
-		err    error
-		expect int
-	}{
-		// Single line
-		{
-			data:   []byte("test\n"),
-			err:    nil,
-			expect: 1,
-		},
-		// No newline
-		{
-			data:   []byte("test"),
-			err:    errors.New(""),
-			expect: 1,
-		},
-		// Multiple lines
-		{
-			data:   []byte("test1\ntest2\ntest3\n"),
-			err:    nil,
-			expect: 3,
-		},
-	}
-
-	for _, test := range tests {
-		file, _ := ioutil.TempFile("", ".LogsToElasticTest")
-		file.Write(test.data)
-		file.Close()
-
-		result, err := LineCount(file.Name())
-
-		assert.IsType(t, test.err, err)
-		assert.Equal(t, test.expect, result)
-
-		os.Remove(file.Name())
-	}
-}
-
-func TestGetLines(t *testing.T) {
-	tests := []struct {
-		start        int64
-		lines        int
-		data         []byte
-		err          error
-		expectData   [][]byte
-		expectOffset int64
-	}{
-		// 1 line, no offset
-		{
-			start:        0,
-			lines:        1,
-			data:         []byte("test\n"),
-			err:          nil,
-			expectData:   [][]byte{[]byte("test")},
-			expectOffset: int64(len([]byte("test\n"))),
-		},
-		// 2 lines, no offset
-		{
-			start:        0,
-			lines:        2,
-			data:         []byte("test1\ntest2\n"),
-			err:          nil,
-			expectData:   [][]byte{[]byte("test1"), []byte("test2")},
-			expectOffset: int64(len([]byte("test1\ntest2\n"))),
-		},
-		// Multiline slice, with offset
-		{
-			start:        6,
-			lines:        1,
-			data:         []byte("test1\ntest2\ntest2\n"),
-			err:          nil,
-			expectData:   [][]byte{[]byte("test2")},
-			expectOffset: int64(len([]byte("test2\n"))),
-		},
-		// Ask for more lines than are left before EOF
-		{
-			start:        0,
-			lines:        10,
-			data:         []byte("test1\ntest2\n"),
-			err:          nil,
-			expectData:   [][]byte{[]byte("test1"), []byte("test2")},
-			expectOffset: int64(len([]byte("test1\ntest2\n"))),
-		},
-	}
-
-	for _, test := range tests {
-		file, _ := ioutil.TempFile("", ".LogsToElasticTest")
-		file.Write(test.data)
-		file.Close()
-
-		result, offset, err := GetLines(test.start, test.lines, file.Name())
-
-		assert.IsType(t, test.err, err)
-		for i, v := range test.expectData {
-			assert.Equal(t, string(v), string(result[i]))
-		}
-		assert.Equal(t, test.expectOffset, offset)
-
-		os.Remove(file.Name())
 	}
 }
 
