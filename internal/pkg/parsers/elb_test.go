@@ -56,25 +56,17 @@ func TestSplitRecord(t *testing.T) {
 	}
 }
 
-/*
 func TestElbGetChunk(t *testing.T) {
 	tests := []struct {
 		elb    *Elb
-		start  int
-		end    int
-		offset int64
-		data   []byte
-		err    error
+		data   [][]byte
 		expect []ElbLog
 	}{
 		{
 			elb: &Elb{
 				Config: &conf.Config{IndexName: "index", Delimiter: []byte("\n"), ChunkSize: 1},
 			},
-			start:  0,
-			end:    1,
-			offset: 0,
-			data:   []byte("2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 \"GET https://www.example.com:443/ HTTP/1.1\" \"curl/7.38.0\" DHE-RSA-AES128-SHA TLSv1.2"),
+			data: [][]byte{[]byte("2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 \"GET https://www.example.com:443/ HTTP/1.1\" \"curl/7.38.0\" DHE-RSA-AES128-SHA TLSv1.2")},
 			expect: []ElbLog{ElbLog{
 				Timestamp:    "2015-05-13T23:39:43.945958Z",
 				Message:      "my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 \"GET https://www.example.com:443/ HTTP/1.1\" \"curl/7.38.0\" DHE-RSA-AES128-SHA TLSv1.2",
@@ -100,12 +92,7 @@ func TestElbGetChunk(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		e := test.elb
-		file, _ := ioutil.TempFile("", ".LogsToElasticTest")
-		file.Write(test.data)
-		file.Close()
-
-		result, err := e.GetChunk(test.start, test.end, file.Name(), &test.offset)
+		result := test.elb.GetChunk(test.data)
 
 		// We have to cast the expected result as a slice of interface{}
 		expect := make([]interface{}, len(test.expect))
@@ -113,13 +100,10 @@ func TestElbGetChunk(t *testing.T) {
 			expect[i] = v
 		}
 
-		assert.IsType(t, test.err, err)
 		assert.Equal(t, expect, result)
-
-		os.Remove(file.Name())
 	}
 }
-*/
+
 func TestElbGetChunks(t *testing.T) {
 	tests := []struct {
 		elb    *Elb
