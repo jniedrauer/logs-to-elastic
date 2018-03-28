@@ -1,12 +1,12 @@
 package parsers
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
 	"net/url"
 	"os"
 	"strings"
-	"sync/atomic"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -69,56 +69,59 @@ func (e *Elb) GetChunks() <-chan *EncodedChunk {
 // Handle a single record
 func (e *Elb) ParseRecord(record *events.S3EventRecord, out chan<- *EncodedChunk) error {
 	// Get the log file from S3
-	rOffset := int64(0) // Reader offset for file
-	fileName, err := S3Client.Get(record.S3.Bucket.Name, record.S3.Object.Key)
-	defer os.Remove(fileName)
-
+	f, err := S3Client.Get(record.S3.Bucket.Name, record.S3.Object.Key)
+	defer os.Remove(f)
 	if err != nil {
 		return err
 	}
 
-	// Count number of lines in the file
-	lc, err := LineCount(fileName)
+	fh, err := os.Open(f)
 	if err != nil {
-		log.Error(err.Error())
+		return err
 	}
-	e.LineCount += lc
-	log.Debug("found lines: ", e.LineCount)
+	defer fh.Close()
 
-	Chunk(e.Config.ChunkSize, e.LineCount, func(start int, end int) {
-		data, err := e.GetChunk(start, end, fileName, &rOffset)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
+	scanner := bufio.NewScanner(fh)
 
-		payload, err := GetEncodedChunk(data, e.Config.Delimiter)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
+	// Scan through the file by lines, transmitting in batches
+	var chunk [][]byte
+	i := 0
+	for {
+		if scanner.Scan() {
+			chunk := append(chunk, scanner.Bytes())
+			i += 1
+			e.LineCount += 1
 
-		out <- &EncodedChunk{
-			Payload: payload,
-			Records: uint32(end - start),
+			if i >= e.Config.ChunkSize {
+				i = 0
+				d := e.GetChunk(chunk)
+				payload, err := GetEncodedChunk(d, e.Config.Delimiter)
+				if err != nil {
+					log.Error(err.Error())
+					continue
+				}
+
+				out <- &EncodedChunk{
+					Payload: payload,
+					Records: uint32(len(chunk)),
+				}
+
+				chunk = nil
+			}
+
+		} else if err := scanner.Err(); err != nil {
+			return err
+		} else {
+			break
 		}
-	})
+	}
 
 	return err
 }
 
 // Return a slice of logs with logstash keys
-func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]interface{}, error) {
-	lc := int(end - start)
-
-	lines, offset, err := GetLines(atomic.LoadInt64(rOffset), lc, fileName)
-	log.Debug("old offset: ", *rOffset, " new offset: ", offset+*rOffset)
-	if err != nil {
-		return make([]interface{}, 0), err
-	}
-	*rOffset = *rOffset + offset
-
-	l := make([]interface{}, lc)
+func (e *Elb) GetChunk(lines [][]byte) []interface{} {
+	l := make([]interface{}, len(lines))
 	for i, v := range lines {
 		split, err := splitRecord(v)
 		if err != nil {
@@ -158,7 +161,7 @@ func (e *Elb) GetChunk(start int, end int, fileName string, rOffset *int64) ([]i
 		}
 	}
 
-	return l, nil
+	return l
 }
 
 // Split an ELB record into its parts

@@ -55,10 +55,10 @@ func LineCount(fileName string) (int, error) {
 	lineSep := []byte{'\n'}
 
 	file, err := os.Open(fileName)
-	defer file.Close()
 	if err != nil {
 		return count, err
 	}
+	defer file.Close()
 
 	for {
 		c, err := file.Read(buf)
