@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	os.Exit(rc)
 }
 
-func TestSplitRecord(t *testing.T) {
+func TestSplitRow(t *testing.T) {
 	tests := []struct {
 		data   []byte
 		err    error
@@ -49,25 +49,25 @@ func TestSplitRecord(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result, err := splitRecord(test.data)
+		result, err := splitRow(test.data)
 
 		assert.IsType(t, test.err, err)
 		assert.Equal(t, test.expect, result)
 	}
 }
 
-func TestElbGetChunk(t *testing.T) {
+func TestElbParseRow(t *testing.T) {
 	tests := []struct {
 		elb    *Elb
-		data   [][]byte
-		expect []ElbLog
+		data   []byte
+		expect interface{}
 	}{
 		{
 			elb: &Elb{
 				Config: &conf.Config{IndexName: "index", Delimiter: []byte("\n"), ChunkSize: 1},
 			},
-			data: [][]byte{[]byte("2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 \"GET https://www.example.com:443/ HTTP/1.1\" \"curl/7.38.0\" DHE-RSA-AES128-SHA TLSv1.2")},
-			expect: []ElbLog{ElbLog{
+			data: []byte("2015-05-13T23:39:43.945958Z my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 \"GET https://www.example.com:443/ HTTP/1.1\" \"curl/7.38.0\" DHE-RSA-AES128-SHA TLSv1.2"),
+			expect: ElbLog{
 				Timestamp:    "2015-05-13T23:39:43.945958Z",
 				Message:      "my-loadbalancer 192.168.131.39:2817 10.0.0.1:80 0.000086 0.001048 0.001337 200 200 0 57 \"GET https://www.example.com:443/ HTTP/1.1\" \"curl/7.38.0\" DHE-RSA-AES128-SHA TLSv1.2",
 				IndexName:    "index",
@@ -87,28 +87,22 @@ func TestElbGetChunk(t *testing.T) {
 				Agent:        "curl/7.38.0",
 				Cipher:       "DHE-RSA-AES128-SHA",
 				Protocol:     "TLSv1.2",
-			}},
+			},
 		},
 	}
 
 	for _, test := range tests {
-		result := test.elb.GetChunk(test.data)
-
-		// We have to cast the expected result as a slice of interface{}
-		expect := make([]interface{}, len(test.expect))
-		for i, v := range test.expect {
-			expect[i] = v
-		}
-
-		assert.Equal(t, expect, result)
+		result := test.elb.ParseRow(test.data)
+		assert.Equal(t, test.expect, result)
 	}
 }
 
 func TestElbGetChunks(t *testing.T) {
 	tests := []struct {
-		elb    *Elb
-		src    string
-		expect int
+		elb          *Elb
+		src          string
+		expect       int
+		expectChunks int
 	}{
 		{
 			elb: &Elb{
@@ -120,8 +114,9 @@ func TestElbGetChunks(t *testing.T) {
 				},
 				Config: &conf.Config{IndexName: "index", Delimiter: []byte("\n"), ChunkSize: 1},
 			},
-			src:    "testdata/issue_2_logs",
-			expect: 16,
+			src:          "testdata/issue_2_logs",
+			expect:       16,
+			expectChunks: 16,
 		},
 		{
 			elb: &Elb{
@@ -133,8 +128,9 @@ func TestElbGetChunks(t *testing.T) {
 				},
 				Config: &conf.Config{IndexName: "index", Delimiter: []byte("\n"), ChunkSize: 40},
 			},
-			src:    "testdata/issue_4_logs",
-			expect: 94,
+			src:          "testdata/issue_4_logs",
+			expect:       94,
+			expectChunks: 3,
 		},
 	}
 
@@ -143,10 +139,13 @@ func TestElbGetChunks(t *testing.T) {
 		// This is a global variable. See also:
 		// https://docs.aws.amazon.com/lambda/latest/dg/go-programming-model-handler-types.html#go-programming-model-handler-execution-environment-reuse
 		S3Client = awsapi.S3Client{awsapi.MockS3Iface{TestData: data}}
+		chunks := 0
 		for v := range test.elb.GetChunks() {
+			chunks += 1
 			assert.True(t, strings.HasPrefix(string(v.Payload), "{\"timestamp\""))
 			assert.True(t, strings.HasSuffix(string(v.Payload), "\"ssl_protocol\":\"TLSv1.2\"}"))
 		}
 		assert.Equal(t, test.expect, test.elb.LineCount)
+		assert.Equal(t, test.expectChunks, chunks)
 	}
 }
