@@ -79,7 +79,7 @@ func TestElbParseRow(t *testing.T) {
 				ResponseTime: "0.001337",
 				Code:         "200",
 				BackendCode:  "200",
-				Recieved:     "0",
+				Received:     "0",
 				Sent:         "57",
 				Method:       "GET",
 				DomainName:   "www.example.com:443",
