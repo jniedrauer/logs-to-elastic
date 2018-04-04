@@ -31,7 +31,7 @@ type ElbLog struct {
 	ResponseTime string `json:"response_processing_time"`
 	Code         string `json:"elb_status_code"`
 	BackendCode  string `json:"status_code"`
-	Recieved     string `json:"recieved_bytes"`
+	Received     string `json:"received_bytes"`
 	Sent         string `json:"sent_bytes"`
 	Method       string `json:"method"`
 	DomainName   string `json:"domain_name"`
@@ -154,7 +154,7 @@ func (e *Elb) ParseRow(row []byte) interface{} {
 		ResponseTime: split[6],
 		Code:         split[7],
 		BackendCode:  split[8],
-		Recieved:     split[9],
+		Received:     split[9],
 		Sent:         split[10],
 		Method:       method,
 		DomainName:   domain,
