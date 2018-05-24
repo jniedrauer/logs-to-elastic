@@ -71,3 +71,53 @@ with unlimited concurrency.
 - `DELIMITER`
 
    Delimiter character to use between records when encoding.
+
+### Automated deployment
+Deploy the Lambda functions using Cloudformation and AWS CLI.
+
+Cloudwatch:
+```
+# Deploy the Lambda package to S3 and transform template
+aws cloudformation package \
+    --template resources/cloudformation/cloudwatch.yml \
+    --s3-bucket <S3 Bucket> \
+    --s3-prefix logs-to-elastic \
+    --output-template-file /tmp/cloudwatch.yml
+
+# Deploy the template
+aws cloudformation deploy \
+    --template-file /tmp/cloudwatch.yml \
+    --stack-name CloudwatchLogsToElastic \
+    --capabilities CAPABILITY_IAM \
+    --s3-bucket <S3 Bucket> \
+    --s3-prefix logs-to-elastic \
+    --parameter-overrides \
+        'LambdaSecurityGroups=sg-123456' \
+        'LambdaSubnets=subnet-12345,subnet-6789' \
+        'IndexName=cloudwatch' \
+        'Logstash=http://logstash.endpoint'
+```
+
+ELB:
+```
+# Deploy the Lambda package to S3 and transform template
+aws cloudformation package \
+    --template resources/cloudformation/elb.yml \
+    --s3-bucket <S3 Bucket> \
+    --s3-prefix logs-to-elastic \
+    --output-template-file /tmp/elb.yml
+
+# Deploy the template
+aws cloudformation deploy \
+    --template-file /tmp/elb.yml \
+    --stack-name ElbLogsToElastic \
+    --capabilities CAPABILITY_IAM \
+    --s3-bucket <S3 Bucket> \
+    --s3-prefix logs-to-elastic \
+    --parameter-overrides \
+        'LambdaSecurityGroups=sg-123456' \
+        'LambdaSubnets=subnet-12345,subnet-6789' \
+        'IndexName=elb' \
+        'Logstash=http://logstash.endpoint' \
+        'LogS3Bucket=<s3-bucket-name>'
+```

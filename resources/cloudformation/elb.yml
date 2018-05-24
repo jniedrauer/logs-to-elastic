@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Ship ELB logs to an Elastic Stack.
+
+Parameters:
+  LambdaSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  LambdaSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  IndexName:
+    Type: String
+  Logstash:
+    Type: String
+  ChunkSize:
+    Type: String
+    Default: 1000
+  Timeout:
+    Type: String
+    Default: 30
+  LogS3Bucket:
+    Type: String
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      Policies:
+        - PolicyName: LogLambda
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                  - logs:FilterLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: GetS3Logs
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::${LogS3Bucket}/*'
+        - PolicyName: VpcNetworking
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DeleteNetworkInterface
+                  - 'ec2:Describe*'
+                Resource: '*'
+  ElbFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code: ../../build/elb.zip
+      Description: Ship ELB logs to Elastic Stack
+      Environment:
+        Variables:
+          CHUNK_SIZE: !Ref ChunkSize
+          INDEXNAME: !Ref IndexName
+          LOGSTASH: !Ref Logstash
+          LOG_LEVEL: INFO
+          TIMEOUT: !Ref Timeout
+      FunctionName: elb_logs_to_elastic
+      Handler: elb
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: go1.x
+      Timeout: 60
+      VpcConfig:
+        SecurityGroupIds: !Ref LambdaSecurityGroups
+        SubnetIds: !Ref LambdaSubnets
+  ElbLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ElbFunction}'
+      RetentionInDays: 30
+    DependsOn:
+      - ElbFunction
+  ElbExecPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ElbFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
