@@ -14,6 +14,7 @@ type CloudwatchLog struct {
 	Timestamp string `json:"timestamp"`
 	Message   string `json:"message"`
 	LogGroup  string `json:"logGroup"`
+	LogStream string `json:"logStream"`
 	IndexName string `json:"indexname"`
 }
 
@@ -70,6 +71,7 @@ func (c *Cloudwatch) GetChunk(start int, end int) ([]interface{}, error) {
 			Timestamp: unixToRfc3339(v.Timestamp),
 			Message:   v.Message,
 			LogGroup:  c.Data.LogGroup,
+			LogStream: c.Data.LogStream,
 			IndexName: c.Config.IndexName,
 		}
 	}

@@ -25,11 +25,12 @@ func TestGetChunk(t *testing.T) {
 			index: "i",
 			data: events.CloudwatchLogsData{
 				LogGroup:  "g",
+				LogStream: "s",
 				LogEvents: []events.CloudwatchLogsLogEvent{{Timestamp: 0, Message: "m"}},
 			},
 			err: nil,
 			expect: []CloudwatchLog{
-				{Timestamp: "1970-01-01T00:00:00Z", Message: "m", LogGroup: "g", IndexName: "i"},
+				{Timestamp: "1970-01-01T00:00:00Z", Message: "m", LogGroup: "g", LogStream: "s", IndexName: "i"},
 			},
 		},
 		// Multiple event slice
@@ -38,7 +39,8 @@ func TestGetChunk(t *testing.T) {
 			end:   3,
 			index: "i",
 			data: events.CloudwatchLogsData{
-				LogGroup: "g",
+				LogGroup:  "g",
+				LogStream: "s",
 				LogEvents: []events.CloudwatchLogsLogEvent{
 					{Timestamp: 0, Message: "m0"},
 					{Timestamp: 0, Message: "m1"},
@@ -48,8 +50,8 @@ func TestGetChunk(t *testing.T) {
 			},
 			err: nil,
 			expect: []CloudwatchLog{
-				{Timestamp: "1970-01-01T00:00:00Z", Message: "m1", LogGroup: "g", IndexName: "i"},
-				{Timestamp: "2018-02-27T03:04:53Z", Message: "m2", LogGroup: "g", IndexName: "i"},
+				{Timestamp: "1970-01-01T00:00:00Z", Message: "m1", LogGroup: "g", LogStream: "s", IndexName: "i"},
+				{Timestamp: "2018-02-27T03:04:53Z", Message: "m2", LogGroup: "g", LogStream: "s", IndexName: "i"},
 			},
 		},
 	}
@@ -78,7 +80,8 @@ func TestGetChunks(t *testing.T) {
 		// Test output with single record per chunk
 		{
 			data: events.CloudwatchLogsData{
-				LogGroup: "g",
+				LogGroup:  "g",
+				LogStream: "s",
 				LogEvents: []events.CloudwatchLogsLogEvent{
 					{Timestamp: 0, Message: "m1"},
 					{Timestamp: 0, Message: "m2"},
@@ -87,14 +90,15 @@ func TestGetChunks(t *testing.T) {
 			chunkSize:   1,
 			expectCount: 2,
 			expect: [][]byte{
-				[]byte("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"message\":\"m1\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
-				[]byte("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"message\":\"m2\",\"logGroup\":\"g\",\"indexname\":\"index\"}"),
+				[]byte("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"message\":\"m1\",\"logGroup\":\"g\",\"logStream\":\"s\",\"indexname\":\"index\"}"),
+				[]byte("{\"timestamp\":\"1970-01-01T00:00:00Z\",\"message\":\"m2\",\"logGroup\":\"g\",\"logStream\":\"s\",\"indexname\":\"index\"}"),
 			},
 		},
 		// Test mismatched chunks and records to verify that count is correct
 		{
 			data: events.CloudwatchLogsData{
-				LogGroup: "g",
+				LogGroup:  "g",
+				LogStream: "s",
 				LogEvents: []events.CloudwatchLogsLogEvent{
 					{Timestamp: 0, Message: "m1"},
 					{Timestamp: 0, Message: "m2"},
