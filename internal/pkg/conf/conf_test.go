@@ -22,10 +22,11 @@ func TestInit(t *testing.T) {
 			lenv:  "logstash",
 			csenv: "100",
 			expect: Config{
-				Delimiter: []byte(","),
-				IndexName: "indexname",
-				Logstash:  "logstash",
-				ChunkSize: 100,
+				Delimiter:       []byte(","),
+				IndexName:       "indexname",
+				Logstash:        "logstash",
+				LogstashTimeout: defaultTimeout,
+				ChunkSize:       100,
 			},
 		},
 	}

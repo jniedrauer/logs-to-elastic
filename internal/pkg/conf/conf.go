@@ -7,14 +7,18 @@ import (
 	"strconv"
 )
 
-var defaultDelimiter string = "\n"
+const defaultDelimiter = "\n"
+const defaultTimeout = 10
+
+// TODO: This whole thing is garbage
 
 // Stores configuration state
 type Config struct {
-	ChunkSize int
-	Delimiter []byte
-	IndexName string
-	Logstash  string
+	ChunkSize       int
+	Delimiter       []byte
+	IndexName       string
+	Logstash        string
+	LogstashTimeout int
 }
 
 // Populate configuration state
@@ -23,13 +27,25 @@ func NewConfig() *Config {
 	i := GetEnvOrFatal("INDEXNAME")
 	l := GetEnvOrFatal("LOGSTASH")
 
-	c64, err := strconv.ParseInt(GetEnvOrFatal("CHUNK_SIZE"), 10, 0)
+	cs, err := strToInt(GetEnvOrFatal("CHUNK_SIZE"))
 	if err != nil {
 		log.Fatalf("not a number: %v", err)
 	}
-	cs := int(c64)
+	lt, err := strToInt(GetEnvOrDefault("LOGSTASH_TIMEOUT", strconv.Itoa(defaultTimeout)))
+	if err != nil {
+		log.Fatalf("not a number: %v", err)
+	}
 
-	return &Config{Delimiter: d, IndexName: i, Logstash: l, ChunkSize: cs}
+	return &Config{Delimiter: d, IndexName: i, Logstash: l, ChunkSize: cs, LogstashTimeout: lt}
+}
+
+func strToInt(str string) (result int, err error) {
+	i64, err := strconv.ParseInt(str, 10, 0)
+	if err != nil {
+		return
+	}
+
+	return int(i64), nil
 }
 
 // Get environment variable or return default if unset
